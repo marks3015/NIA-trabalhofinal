@@ -62,7 +62,7 @@ class SessionGRU(nn.Module):
 # ---------------------------------------------------------------------------
 @st.cache_resource
 def load_model_and_catalog():
-    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu")
+    checkpoint = torch.load(CHECKPOINT_PATH, map_location="cpu", weights_only=True)
     catalogo = pd.read_csv(CATALOG_PATH)
 
     model = SessionGRU(
