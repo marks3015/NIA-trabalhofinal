@@ -740,6 +740,11 @@ CUSTOM_CSS = f"""
 # Arquitetura do modelo (deve bater com o notebook)
 # ---------------------------------------------------------------------------
 class SessionGRU(nn.Module):
+    """GRU + atenção aditiva sobre os estados ocultos da sequência: o
+    contexto final é uma combinação ponderada de todos os passos (não
+    apenas o último), o que ajuda o modelo a focar nos itens mais
+    relevantes da sessão em vez de só no mais recente."""
+
     def __init__(self, num_items, num_categories, embed_dim, cat_embed_dim, hidden_dim,
                  num_layers, dropout, pad_idx, cat_pad_idx):
         super().__init__()
@@ -755,6 +760,8 @@ class SessionGRU(nn.Module):
             batch_first=True,
             dropout=dropout if num_layers > 1 else 0,
         )
+        self.attn_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.attn_context = nn.Linear(hidden_dim, 1, bias=False)
         self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(hidden_dim, num_items)
 
@@ -767,10 +774,23 @@ class SessionGRU(nn.Module):
         packed = nn.utils.rnn.pack_padded_sequence(
             embedded, lengths.cpu(), batch_first=True, enforce_sorted=False
         )
-        _, hidden = self.gru(packed)
-        hidden = hidden[-1]
-        hidden = self.dropout(hidden)
-        logits = self.fc(hidden)
+        packed_output, _ = self.gru(packed)
+        outputs, _ = nn.utils.rnn.pad_packed_sequence(
+            packed_output, batch_first=True, total_length=x.size(1)
+        )  # (batch, seq_len, hidden_dim)
+
+        seq_len = outputs.size(1)
+        arange = torch.arange(seq_len, device=outputs.device).unsqueeze(0)
+        mask = arange < lengths.to(outputs.device).unsqueeze(1)  # (batch, seq_len)
+
+        energy = torch.tanh(self.attn_proj(outputs))
+        scores = self.attn_context(energy).squeeze(-1)
+        scores = scores.masked_fill(~mask, float("-inf"))
+        weights = torch.softmax(scores, dim=1)  # (batch, seq_len)
+
+        context = torch.bmm(weights.unsqueeze(1), outputs).squeeze(1)  # (batch, hidden_dim)
+        context = self.dropout(context)
+        logits = self.fc(context)
         return logits
 
 
