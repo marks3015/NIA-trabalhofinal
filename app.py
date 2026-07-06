@@ -17,7 +17,7 @@ st.set_page_config(
     page_title="Loja Mockup | Recomendador de Sessões",
     page_icon="🛍️",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="auto",
 )
 
 # ---------------------------------------------------------------------------
@@ -304,61 +304,87 @@ CUSTOM_CSS = f"""
         margin: auto 0 0.4rem 0;
     }}
 
-    /* ===== Streamlit buttons inside cards ===== */
-    [data-testid="stVerticalBlock"] [data-testid="stButton"] button {{
+    /* ===== Botões — MD3 mapeado nos 3 kinds nativos do Streamlit =====
+       secondary = outlined (padrão), primary = filled (CTA de destaque),
+       tertiary = text/icon button (ações discretas, ex.: remover item). */
+    [data-testid="stButton"] button {{
         width: 100%;
         padding: 0.55rem 0.875rem !important;
         border-radius: var(--md-shape-xl) !important;
         font-size: 0.8125rem !important;
         font-weight: 600 !important;
-        border: 1px solid var(--md-outline) !important;
-        background: transparent !important;
-        color: var(--md-primary) !important;
         transition: all 0.2s ease !important;
     }}
 
-    [data-testid="stVerticalBlock"] [data-testid="stButton"] button:hover {{
+    [data-testid="stBaseButton-secondary"] {{
+        border: 1px solid var(--md-outline) !important;
+        background: transparent !important;
+        color: var(--md-primary) !important;
+    }}
+
+    [data-testid="stBaseButton-secondary"]:hover {{
         background: var(--md-primary-container) !important;
         border-color: var(--md-primary) !important;
     }}
 
-    [data-testid="stVerticalBlock"] [data-testid="stButton"] button:active {{
+    [data-testid="stBaseButton-primary"] {{
         background: var(--md-primary) !important;
+        border: 1px solid var(--md-primary) !important;
         color: white !important;
-        border-color: var(--md-primary) !important;
+        box-shadow: var(--md-elevation-1);
     }}
 
-    [data-testid="stVerticalBlock"] [data-testid="stButton"] button:focus-visible {{
+    [data-testid="stBaseButton-primary"]:hover {{
+        background: #7b62b4 !important;
+        box-shadow: var(--md-elevation-2);
+    }}
+
+    [data-testid="stBaseButton-tertiary"] {{
+        border: none !important;
+        background: transparent !important;
+        color: var(--md-on-surface-variant) !important;
+        border-radius: 50% !important;
+        width: 32px !important;
+        min-width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+    }}
+
+    [data-testid="stBaseButton-tertiary"]:hover {{
+        background: var(--md-error-container) !important;
+        color: var(--md-error) !important;
+    }}
+
+    [data-testid="stButton"] button:focus-visible {{
         outline: 2px solid var(--md-primary) !important;
         outline-offset: 2px !important;
         box-shadow: none !important;
     }}
 
-    .rec-card [data-testid="stButton"] button {{
-        background: var(--md-primary) !important;
-        border-color: var(--md-primary) !important;
-        color: white !important;
-    }}
-
-    .rec-card [data-testid="stButton"] button:hover {{
-        box-shadow: var(--md-elevation-1) !important;
-        background: #7b62b4 !important;
+    [data-testid="stButton"] button:disabled {{
+        opacity: 1 !important;
+        background: var(--md-surface-variant) !important;
+        color: var(--md-on-surface-variant) !important;
+        border-color: var(--md-outline-variant) !important;
+        cursor: not-allowed !important;
     }}
 
     /* ===== Recommendation Section ===== */
-    .rec-section {{
+    /* .st-key-rec_section é o st.container(key="rec_section") real que
+       envolve o título, o grid e o expander (ver render em main()). */
+    .st-key-rec_section {{
         background: linear-gradient(135deg, var(--md-primary-container) 0%, var(--md-secondary-container) 100%);
         border-radius: var(--md-shape-lg);
         padding: 1.75rem;
         margin: 2rem 0;
     }}
 
-    .rec-section .section-title {{
+    .st-key-rec_section .section-title {{
         color: var(--md-on-primary-container);
         margin-top: 0;
     }}
 
-    .rec-section .section-subtitle {{
+    .st-key-rec_section .section-subtitle {{
         color: var(--md-on-surface-variant);
     }}
 
@@ -405,18 +431,18 @@ CUSTOM_CSS = f"""
         margin-bottom: 1.5rem;
     }}
 
-    .search-wrapper {{
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
+    /* .st-key-search_wrapper é o container real (st.container(key=...)) que
+       envolve o ícone e o text_input — só assim os dois ficam de fato
+       aninhados no mesmo elemento e o CSS abaixo passa a ter efeito. */
+    .st-key-search_wrapper {{
         background: var(--md-surface);
         border: 1px solid var(--md-outline);
         border-radius: var(--md-shape-xl);
-        padding: 0 0.75rem;
+        padding: 0.15rem 1rem;
         transition: border-color 0.2s, box-shadow 0.2s;
     }}
 
-    .search-wrapper:focus-within {{
+    .st-key-search_wrapper:focus-within {{
         border-color: var(--md-primary);
         box-shadow: 0 0 0 3px rgba(103, 80, 164, 0.18);
     }}
@@ -427,59 +453,29 @@ CUSTOM_CSS = f"""
         flex-shrink: 0;
     }}
 
-    .search-wrapper input {{
+    .st-key-search_wrapper input {{
         border: none !important;
         background: transparent !important;
-        padding: 0.75rem 0 !important;
+        padding: 0.65rem 0 !important;
         font-size: 0.9375rem !important;
         box-shadow: none !important;
-        flex: 1;
         outline: none;
     }}
 
-    .search-wrapper input:focus {{
-        box-shadow: none !important;
-        border: none !important;
+    .st-key-search_wrapper [data-testid="stTextInput"] {{
+        flex: 1;
     }}
 
     /* ===== Category Chips ===== */
-    .chips-row {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 0.75rem;
-        align-items: center;
+    .st-key-chips_row {{
+        flex-wrap: wrap !important;
+        margin-top: 0.5rem !important;
     }}
 
     .chip-label {{
         font-size: 0.8125rem;
         color: var(--md-on-surface-variant);
-        margin-right: 0.25rem;
-    }}
-
-    .chip-button [data-testid="stButton"] button {{
-        min-height: 32px !important;
-        padding: 0.35rem 0.875rem !important;
-        border-radius: var(--md-shape-xl) !important;
-        font-size: 0.8125rem !important;
-        font-weight: 500 !important;
-        border: 1px solid var(--md-outline) !important;
-        background: transparent !important;
-        color: var(--md-on-surface-variant) !important;
-        transition: all 0.2s ease !important;
-    }}
-
-    .chip-button.active [data-testid="stButton"] button {{
-        background: var(--md-secondary-container) !important;
-        border-color: var(--md-secondary) !important;
-        color: var(--md-on-secondary-container) !important;
-        font-weight: 600 !important;
-    }}
-
-    .chip-button [data-testid="stButton"] button:hover {{
-        background: var(--md-secondary-container) !important;
-        border-color: var(--md-secondary) !important;
-        color: var(--md-on-secondary-container) !important;
+        white-space: nowrap;
     }}
 
     /* ===== Results Count ===== */
@@ -527,21 +523,6 @@ CUSTOM_CSS = f"""
         font-size: 0.75rem;
         color: var(--md-on-surface-variant);
         margin: 0;
-    }}
-
-    .cart-remove-btn [data-testid="stButton"] button {{
-        min-height: 28px !important;
-        padding: 0.2rem 0.4rem !important;
-        border-radius: 50% !important;
-        font-size: 0.75rem !important;
-        background: transparent !important;
-        color: var(--md-on-surface-variant) !important;
-        border: none !important;
-    }}
-
-    .cart-remove-btn [data-testid="stButton"] button:hover {{
-        background: var(--md-error-container) !important;
-        color: var(--md-error) !important;
     }}
 
     .cart-sidebar-divider {{
@@ -828,13 +809,31 @@ def build_card_html(row, is_recommendation=False):
 
 def render_product_card(row, key_prefix, is_recommendation=False):
     """Renderiza card visual + botão Streamlit nativo para adicionar."""
-    st.markdown(build_card_html(row, is_recommendation), unsafe_allow_html=True)
-    btn_label = "🛒 Adicionar" if not is_recommendation else "👀 Ver este produto"
-    if st.button(btn_label, key=f"{key_prefix}_{row['item_id']}", use_container_width=True):
-        item_id = int(row["item_id"])
-        if item_id not in st.session_state.session:
-            st.session_state.session.append(item_id)
-            st.toast(f"✅ {row['nome']} adicionado ao carrinho!")
+    st.html(build_card_html(row, is_recommendation))
+
+    item_id = int(row["item_id"])
+    already_in_cart = item_id in st.session_state.session
+
+    if already_in_cart:
+        st.button(
+            "✓ No carrinho",
+            key=f"{key_prefix}_{item_id}",
+            width="stretch",
+            disabled=True,
+            help="Este item já está no seu carrinho",
+        )
+        return
+
+    clicked = st.button(
+        "🛒 Adicionar ao carrinho",
+        key=f"{key_prefix}_{item_id}",
+        width="stretch",
+        type="primary" if is_recommendation else "secondary",
+        help="Adicionar este item ao carrinho",
+    )
+    if clicked:
+        st.session_state.session.append(item_id)
+        st.toast(f"✅ {row['nome']} adicionado ao carrinho!")
         st.rerun()
 
 
@@ -855,25 +854,25 @@ def render_product_grid(products, key_prefix, is_recommendation=False):
 
 def render_skeleton_grid():
     """Skeleton loading enquanto o modelo carrega."""
-    st.markdown("""
+    st.html("""
         <div class="skeleton-grid">
             <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
             <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
             <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
             <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_empty_state(title, message):
     """Empty state amigável."""
-    st.markdown(f"""
+    st.html(f"""
         <div class="empty-state">
             <div class="empty-state-icon">🔍</div>
             <div class="empty-state-title">{title}</div>
             <div class="empty-state-text">{message}</div>
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_app_bar(cart_size, animate_badge=False):
@@ -881,7 +880,7 @@ def render_app_bar(cart_size, animate_badge=False):
     badge_class = "cart-badge-count" + (" pop" if animate_badge else "")
     badge_html = f'<span class="{badge_class}">{cart_size}</span>' if cart_size > 0 else ""
 
-    st.markdown(f"""
+    st.html(f"""
         <div class="app-bar">
             <div class="app-bar-brand">
                 <div class="app-bar-brand-icon">🛍️</div>
@@ -896,80 +895,69 @@ def render_app_bar(cart_size, animate_badge=False):
                 </div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 def render_hero(has_items=False):
     """Hero banner com CTA contextual."""
     if has_items:
-        st.markdown(f"""
+        st.html(f"""
             <div class="hero" style="padding:1.5rem 2rem;">
                 <div class="hero-title" style="font-size:1.375rem;">Continue explorando 🚀</div>
                 <div class="hero-subtitle">Adicione mais produtos ao carrinho para recomendações ainda melhores.</div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
     else:
-        st.markdown(f"""
+        st.html(f"""
             <div class="hero">
                 <div class="hero-title">Seu próximo produto está a um clique 🎯</div>
                 <div class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
 
 def render_search_section(search_term, selected_category, categories):
-    """Search input + category chips com botões nativos."""
-    st.markdown('<div class="search-section">', unsafe_allow_html=True)
+    """Busca + chips de categoria com botões nativos.
 
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown('<div class="search-wrapper"><span class="search-icon">🔍</span>', unsafe_allow_html=True)
+    A busca usa um único ``st.container(key=...)`` para agrupar de fato o
+    ícone e o campo de texto no mesmo elemento do DOM — antes eles eram
+    renderizados como blocos irmãos (um ``st.markdown`` e um ``st.text_input``
+    separados), então o CSS do "pill" de busca nunca chegava a se aplicar.
+    """
+    with st.container(key="search_wrapper", horizontal=True, vertical_alignment="center", gap="small"):
+        st.html('<span class="search-icon">🔍</span>')
         search_term = st.text_input(
-            "Buscar",
+            "Buscar produtos",
             value=search_term,
-            placeholder="Buscar produtos...",
+            placeholder="Buscar produtos pelo nome...",
             label_visibility="collapsed",
             key="search_input",
-        )
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col2:
-        st.selectbox(
-            "Categoria",
-            categories,
-            index=categories.index(selected_category) if selected_category in categories else 0,
-            label_visibility="collapsed",
-            key="cat_select",
+            help="Digite parte do nome do produto para filtrar o catálogo",
         )
 
-    st.markdown('<div class="chips-row"><span class="chip-label">Categorias:</span>', unsafe_allow_html=True)
-    chip_cols = st.columns(len(categories))
-    for i, cat in enumerate(categories):
-        with chip_cols[i]:
+    with st.container(key="chips_row", horizontal=True, vertical_alignment="center", gap="small"):
+        st.html('<span class="chip-label">Categorias:</span>')
+        for cat in categories:
             active = cat == st.session_state.get("cat_select", "Todas")
-            css_class = "chip-button" + (" active" if active else "")
-            st.markdown(f'<div class="{css_class}">', unsafe_allow_html=True)
-            if st.button(cat, key=f"chip_{cat}", use_container_width=True):
+            if st.button(cat, key=f"chip_{cat}", type="primary" if active else "secondary"):
                 st.session_state.cat_select = cat
                 st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div></div>', unsafe_allow_html=True)
 
     return search_term
 
 
 def render_cart_sidebar(catalogo):
     """Sidebar do carrinho com itens, total e ações."""
-    st.sidebar.markdown('<div class="cart-title">🛒 Carrinho</div>', unsafe_allow_html=True)
+    st.sidebar.html('<div class="cart-title">🛒 Carrinho</div>')
 
     session = st.session_state.session
     if not session:
-        st.sidebar.markdown("""
+        st.sidebar.html("""
             <div class="cart-empty">
                 <div class="cart-empty-icon">🛒</div>
                 <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
             </div>
-        """, unsafe_allow_html=True)
+        """)
         return
 
     total = 0.0
@@ -980,51 +968,83 @@ def render_cart_sidebar(catalogo):
         prod = prod.iloc[0]
         total += prod["preco"]
 
-        col1, col2 = st.sidebar.columns([5, 1])
-        with col1:
-            st.sidebar.markdown(f"""
-                <div class="cart-item">
-                    <div class="cart-item-name">{prod['nome']}</div>
-                    <div class="cart-item-detail">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.sidebar.markdown('<div class="cart-remove-btn">', unsafe_allow_html=True)
-            if st.sidebar.button("✕", key=f"remove_{item_id}", help="Remover item"):
-                st.session_state.session = [i for i in st.session_state.session if i != item_id]
-                st.rerun()
-            st.sidebar.markdown('</div>', unsafe_allow_html=True)
+        col1, col2 = st.sidebar.columns([5, 1], vertical_alignment="center")
+        col1.html(f"""
+            <div class="cart-item">
+                <div class="cart-item-name">{prod['nome']}</div>
+                <div class="cart-item-detail">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
+            </div>
+        """)
+        if col2.button("✕", key=f"remove_{item_id}", type="tertiary", help=f"Remover {prod['nome']} do carrinho"):
+            st.session_state.session = [i for i in st.session_state.session if i != item_id]
+            st.toast(f"🗑️ {prod['nome']} removido do carrinho.")
+            st.rerun()
 
-    st.sidebar.markdown(f"""
+    st.sidebar.html(f"""
         <div class="cart-total">
             <div class="cart-total-label">Total estimado</div>
             <div class="cart-total-value">R$ {total:.2f}</div>
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
-    st.sidebar.markdown('<hr class="cart-sidebar-divider">', unsafe_allow_html=True)
+    st.sidebar.html('<hr class="cart-sidebar-divider">')
 
-    if st.sidebar.button("🗑️ Limpar carrinho", use_container_width=True, type="secondary"):
+    if st.sidebar.button(
+        "🗑️ Limpar carrinho",
+        width="stretch",
+        type="secondary",
+        help="Remove todos os itens do carrinho e recomeça a sessão",
+    ):
         st.session_state.session = []
+        st.toast("🗑️ Carrinho esvaziado.")
         st.rerun()
 
 
 def render_footer():
     """Footer da aplicação."""
-    st.markdown("""
+    st.html("""
         <div class="footer">
             Projeto acadêmico — <strong>Recomendador de Sessões</strong> com PyTorch + GRU
         </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 # ---------------------------------------------------------------------------
 # UI principal
 # ---------------------------------------------------------------------------
 def main():
+    # --- CSS (precisa vir antes de qualquer render, inclusive o skeleton) ---
+    st.html(f"<style>{CUSTOM_CSS}</style>")
+
     # --- Loading state ---
-    with st.spinner("Carregando modelo de recomendação..."):
-        model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
+    # O skeleton só aparece no primeiro carregamento real (cache miss) da
+    # sessão; em reruns subsequentes @st.cache_resource já devolve na hora.
+    loading_placeholder = st.empty()
+    if "assets_loaded" not in st.session_state:
+        with loading_placeholder.container():
+            st.html(
+                '<div class="section-subtitle">Carregando modelo de recomendação e catálogo...</div>'
+            )
+            render_skeleton_grid()
+
+    try:
+        with st.spinner("Carregando modelo de recomendação..."):
+            model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
+    except FileNotFoundError:
+        loading_placeholder.empty()
+        st.error(
+            "⚠️ Não foi possível carregar o modelo ou o catálogo. "
+            f"Verifique se os arquivos `{CHECKPOINT_PATH}` e `{CATALOG_PATH}` "
+            "estão presentes no diretório do app."
+        )
+        st.stop()
+    except Exception as exc:
+        loading_placeholder.empty()
+        st.error(f"⚠️ Ocorreu um erro inesperado ao carregar o app: {exc}")
+        st.stop()
+
+    loading_placeholder.empty()
+    st.session_state.assets_loaded = True
 
     # Armazena catálogo para acesso global
     st.session_state.catalogo = catalogo
@@ -1035,9 +1055,6 @@ def main():
         st.session_state.session = []
     if "prev_cart_size" not in st.session_state:
         st.session_state.prev_cart_size = 0
-
-    # --- CSS ---
-    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
     # --- Estado atual ---
     cart_size = len(st.session_state.session)
@@ -1083,7 +1100,7 @@ def main():
     if cat_filter and cat_filter != "Todas":
         filtered = filtered[filtered["categoria"] == cat_filter]
 
-    st.markdown('<div class="section-title">Produtos</div>', unsafe_allow_html=True)
+    st.html('<div class="section-title">Produtos</div>')
 
     if filtered.empty:
         if search_term or (cat_filter and cat_filter != "Todas"):
@@ -1105,53 +1122,52 @@ def main():
             count_msg += f' para "{search_term}"'
         if cat_filter and cat_filter != "Todas":
             count_msg += f" em {cat_filter}"
-        st.markdown(f'<div class="results-count">{count_msg}.</div>', unsafe_allow_html=True)
+        st.html(f'<div class="results-count">{count_msg}.</div>')
         render_product_grid(filtered, "product")
 
     # ======================================================================
     # RECOMENDAÇÕES
     # ======================================================================
     if cart_size > 0:
-        st.markdown(
-            '<div class="rec-section">'
-            '<div class="section-title">✨ Quem viu isso também viu</div>',
-            unsafe_allow_html=True,
-        )
+        # st.container(key=...) garante que o título, o grid e o expander
+        # fiquem de fato dentro do mesmo elemento estilizado como
+        # .st-key-rec_section — antes, abrir/fechar a div em chamadas
+        # st.markdown separadas deixava o conteúdo como irmão da div, não
+        # como filho, e o fundo em degradê nunca envolvia nada.
+        with st.container(key="rec_section"):
+            st.html('<div class="section-title">✨ Quem viu isso também viu</div>')
 
-        session_cats = catalogo[
-            catalogo["item_id"].isin(st.session_state.session)
-        ]["categoria"].tolist()
-        if session_cats:
-            predominant_cat = max(set(session_cats), key=session_cats.count)
-            st.markdown(
-                f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>',
-                unsafe_allow_html=True,
-            )
-
-        recs = recommend(
-            st.session_state.session,
-            model,
-            catalogo,
-            item_to_idx,
-            idx_to_item,
-            item_cat,
-            item_price,
-            k=5,
-        )
-
-        if recs.empty:
-            st.warning("Não foi possível gerar recomendações para essa sessão.")
-        else:
-            render_product_grid(recs, "rec", is_recommendation=True)
-
-            with st.expander("📊 Ver dados técnicos das recomendações"):
-                st.dataframe(
-                    recs[["rank", "nome", "categoria", "preco", "score"]],
-                    use_container_width=True,
-                    hide_index=True,
+            session_cats = catalogo[
+                catalogo["item_id"].isin(st.session_state.session)
+            ]["categoria"].tolist()
+            if session_cats:
+                predominant_cat = max(set(session_cats), key=session_cats.count)
+                st.html(
+                    f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>'
                 )
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            recs = recommend(
+                st.session_state.session,
+                model,
+                catalogo,
+                item_to_idx,
+                idx_to_item,
+                item_cat,
+                item_price,
+                k=5,
+            )
+
+            if recs.empty:
+                st.warning("Não foi possível gerar recomendações para essa sessão.")
+            else:
+                render_product_grid(recs, "rec", is_recommendation=True)
+
+                with st.expander("📊 Ver dados técnicos das recomendações"):
+                    st.dataframe(
+                        recs[["rank", "nome", "categoria", "preco", "score"]],
+                        width="stretch",
+                        hide_index=True,
+                    )
 
     # ======================================================================
     # FOOTER
