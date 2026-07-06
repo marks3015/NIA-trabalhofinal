@@ -567,6 +567,84 @@ CUSTOM_CSS = f"""
         margin: 0;
     }}
 
+    /* ===== Checkout ===== */
+    .checkout-item {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        background: var(--md-surface);
+        border: 1px solid var(--md-outline-variant);
+        border-radius: var(--md-shape-sm);
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+    }}
+
+    .checkout-item-name {{
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--md-on-surface);
+        margin: 0 0 0.15rem 0;
+    }}
+
+    .checkout-item-detail {{
+        font-size: 0.8125rem;
+        color: var(--md-on-surface-variant);
+        margin: 0;
+    }}
+
+    .checkout-item-price {{
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--md-primary);
+        white-space: nowrap;
+    }}
+
+    .checkout-total-bar {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--md-primary);
+        color: white;
+        border-radius: var(--md-shape-md);
+        padding: 1rem 1.25rem;
+        margin: 0.5rem 0 1.5rem 0;
+    }}
+
+    .checkout-total-label {{
+        font-size: 0.875rem;
+        opacity: 0.85;
+    }}
+
+    .checkout-total-value {{
+        font-size: 1.5rem;
+        font-weight: 700;
+    }}
+
+    /* ===== Confirmação de pedido ===== */
+    .confirmation-box {{
+        text-align: center;
+        padding: 2.5rem 1rem 1.5rem 1rem;
+    }}
+
+    .confirmation-icon {{
+        font-size: 3.5rem;
+        margin-bottom: 0.75rem;
+    }}
+
+    .confirmation-title {{
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--md-on-surface);
+        margin: 0 0 0.5rem 0;
+    }}
+
+    .confirmation-text {{
+        font-size: 0.9375rem;
+        color: var(--md-on-surface-variant);
+        margin: 0 0 1.5rem 0;
+    }}
+
     /* ===== Empty State ===== */
     .empty-state {{
         text-align: center;
@@ -946,6 +1024,44 @@ def render_search_section(search_term, selected_category, categories):
     return search_term
 
 
+def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, item_price, heading):
+    """Bloco de recomendações do modelo — reaproveitado na loja e no checkout."""
+    session_cats = catalogo[
+        catalogo["item_id"].isin(st.session_state.session)
+    ]["categoria"].tolist()
+
+    st.html(f'<div class="section-title">{heading}</div>')
+    if session_cats:
+        predominant_cat = max(set(session_cats), key=session_cats.count)
+        st.html(
+            f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>'
+        )
+
+    recs = recommend(
+        st.session_state.session,
+        model,
+        catalogo,
+        item_to_idx,
+        idx_to_item,
+        item_cat,
+        item_price,
+        k=5,
+    )
+
+    if recs.empty:
+        st.warning("Não foi possível gerar recomendações para essa sessão.")
+        return
+
+    render_product_grid(recs, "rec", is_recommendation=True)
+
+    with st.expander("📊 Ver dados técnicos das recomendações"):
+        st.dataframe(
+            recs[["rank", "nome", "categoria", "preco", "score"]],
+            width="stretch",
+            hide_index=True,
+        )
+
+
 def render_cart_sidebar(catalogo):
     """Sidebar do carrinho com itens, total e ações."""
     st.sidebar.html('<div class="cart-title">🛒 Carrinho</div>')
@@ -987,6 +1103,15 @@ def render_cart_sidebar(catalogo):
         </div>
     """)
 
+    if st.sidebar.button(
+        "✅ Finalizar compra",
+        width="stretch",
+        type="primary",
+        help="Ver o resumo do pedido e confirmar a compra",
+    ):
+        st.session_state.view = "checkout"
+        st.rerun()
+
     st.sidebar.html('<hr class="cart-sidebar-divider">')
 
     if st.sidebar.button(
@@ -1007,6 +1132,101 @@ def render_footer():
             Projeto acadêmico — <strong>Recomendador de Sessões</strong> com PyTorch + GRU
         </div>
     """)
+
+
+def _render_order_items(items):
+    """Lista de itens do pedido (usada no checkout e na confirmação)."""
+    for item in items:
+        st.html(f"""
+            <div class="checkout-item">
+                <div>
+                    <div class="checkout-item-name">{item['nome']}</div>
+                    <div class="checkout-item-detail">{item['categoria']}</div>
+                </div>
+                <div class="checkout-item-price">R$ {item['preco']:.2f}</div>
+            </div>
+        """)
+
+
+def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, item_price):
+    """Tela de finalização: resumo do pedido, upsell com o modelo e confirmação."""
+    if st.button("← Voltar à loja", type="secondary", help="Continuar comprando sem finalizar"):
+        st.session_state.view = "shop"
+        st.rerun()
+
+    st.html('<div class="section-title" style="margin-top:0.75rem;">Finalizar compra</div>')
+    st.html('<div class="section-subtitle">Confira os itens do seu pedido antes de confirmar.</div>')
+
+    session = st.session_state.session
+    if not session:
+        render_empty_state(
+            "Seu carrinho está vazio",
+            "Volte à loja e adicione produtos antes de finalizar a compra.",
+        )
+        return
+
+    items, total = [], 0.0
+    for item_id in session:
+        prod = catalogo[catalogo["item_id"] == item_id]
+        if prod.empty:
+            continue
+        prod = prod.iloc[0]
+        total += prod["preco"]
+        items.append({"nome": prod["nome"], "categoria": prod["categoria"], "preco": float(prod["preco"])})
+
+    _render_order_items(items)
+    st.html(f"""
+        <div class="checkout-total-bar">
+            <span class="checkout-total-label">Total do pedido</span>
+            <span class="checkout-total-value">R$ {total:.2f}</span>
+        </div>
+    """)
+
+    with st.container(key="checkout_rec_section"):
+        render_recommendations(
+            catalogo, model, item_to_idx, idx_to_item, item_cat, item_price,
+            heading="✨ Que tal completar seu pedido?",
+        )
+
+    if st.button(
+        "✅ Confirmar pedido",
+        type="primary",
+        width="stretch",
+        help="Confirma a compra e finaliza o pedido",
+    ):
+        st.session_state.last_order = {"items": items, "total": total}
+        st.session_state.session = []
+        st.session_state.view = "confirmed"
+        st.toast("🎉 Pedido confirmado!")
+        st.rerun()
+
+
+def render_confirmation_view():
+    """Tela de agradecimento exibida após a confirmação do pedido."""
+    st.html("""
+        <div class="confirmation-box">
+            <div class="confirmation-icon">🎉</div>
+            <div class="confirmation-title">Pedido confirmado!</div>
+            <div class="confirmation-text">
+                Obrigado pela compra. Este é um checkout de demonstração —
+                nenhum pagamento foi processado.
+            </div>
+        </div>
+    """)
+
+    order = st.session_state.get("last_order")
+    if order and order.get("items"):
+        _render_order_items(order["items"])
+        st.html(f"""
+            <div class="checkout-total-bar">
+                <span class="checkout-total-label">Total pago</span>
+                <span class="checkout-total-value">R$ {order['total']:.2f}</span>
+            </div>
+        """)
+
+    if st.button("🛍️ Continuar comprando", type="primary", width="stretch"):
+        st.session_state.view = "shop"
+        st.rerun()
 
 
 # ---------------------------------------------------------------------------
@@ -1061,113 +1281,104 @@ def main():
     animate_badge = cart_size > st.session_state.prev_cart_size
     st.session_state.prev_cart_size = cart_size
 
+    # --- Navegação entre telas (loja / checkout / confirmação) ---
+    if "view" not in st.session_state:
+        st.session_state.view = "shop"
+    # Se o carrinho esvaziar enquanto o usuário está no checkout (ex.: item
+    # removido pela sidebar), volta para a loja em vez de mostrar um resumo
+    # de pedido vazio.
+    if st.session_state.view == "checkout" and cart_size == 0:
+        st.session_state.view = "shop"
+
     # ======================================================================
     # TOP APP BAR
     # ======================================================================
     render_app_bar(cart_size, animate_badge)
 
-    # ======================================================================
-    # HERO
-    # ======================================================================
-    render_hero(has_items=cart_size > 0)
-
-    # ======================================================================
-    # SEARCH + FILTROS
-    # ======================================================================
-    categories = ["Todas"] + sorted(catalogo["categoria"].unique().tolist())
-
-    # Inicializa filtros se não existirem
-    if "search_input" not in st.session_state:
-        st.session_state.search_input = ""
-    if "cat_select" not in st.session_state:
-        st.session_state.cat_select = "Todas"
-
-    search_term = render_search_section(
-        st.session_state.search_input,
-        st.session_state.cat_select,
-        categories,
-    )
-
-    # ======================================================================
-    # CATÁLOGO / PRODUTOS
-    # ======================================================================
-    filtered = catalogo.copy()
-    if search_term:
-        filtered = filtered[
-            filtered["nome"].str.contains(search_term, case=False, na=False)
-        ]
-    cat_filter = st.session_state.get("cat_select", "Todas")
-    if cat_filter and cat_filter != "Todas":
-        filtered = filtered[filtered["categoria"] == cat_filter]
-
-    st.html('<div class="section-title">Produtos</div>')
-
-    if filtered.empty:
-        if search_term or (cat_filter and cat_filter != "Todas"):
-            render_empty_state(
-                "Nenhum resultado encontrado",
-                f'Não encontramos nada para "{search_term}" na categoria {cat_filter}.'
-                if search_term and cat_filter != "Todas"
-                else f'Não encontramos nada para "{search_term}".' if search_term
-                else f'Nenhum produto na categoria {cat_filter}.'
-            )
-        else:
-            render_empty_state(
-                "Nenhum produto disponível",
-                "Parece que o catálogo está vazio. Tente novamente mais tarde."
-            )
+    if st.session_state.view == "confirmed":
+        # ==================================================================
+        # CONFIRMAÇÃO DO PEDIDO
+        # ==================================================================
+        render_confirmation_view()
+    elif st.session_state.view == "checkout":
+        # ==================================================================
+        # FINALIZAÇÃO DA COMPRA
+        # ==================================================================
+        render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, item_price)
     else:
-        count_msg = f"{len(filtered)} produto(s) encontrado(s)"
+        # ==================================================================
+        # HERO
+        # ==================================================================
+        render_hero(has_items=cart_size > 0)
+
+        # ==================================================================
+        # SEARCH + FILTROS
+        # ==================================================================
+        categories = ["Todas"] + sorted(catalogo["categoria"].unique().tolist())
+
+        # Inicializa filtros se não existirem
+        if "search_input" not in st.session_state:
+            st.session_state.search_input = ""
+        if "cat_select" not in st.session_state:
+            st.session_state.cat_select = "Todas"
+
+        search_term = render_search_section(
+            st.session_state.search_input,
+            st.session_state.cat_select,
+            categories,
+        )
+
+        # ==================================================================
+        # CATÁLOGO / PRODUTOS
+        # ==================================================================
+        filtered = catalogo.copy()
         if search_term:
-            count_msg += f' para "{search_term}"'
+            filtered = filtered[
+                filtered["nome"].str.contains(search_term, case=False, na=False)
+            ]
+        cat_filter = st.session_state.get("cat_select", "Todas")
         if cat_filter and cat_filter != "Todas":
-            count_msg += f" em {cat_filter}"
-        st.html(f'<div class="results-count">{count_msg}.</div>')
-        render_product_grid(filtered, "product")
+            filtered = filtered[filtered["categoria"] == cat_filter]
 
-    # ======================================================================
-    # RECOMENDAÇÕES
-    # ======================================================================
-    if cart_size > 0:
-        # st.container(key=...) garante que o título, o grid e o expander
-        # fiquem de fato dentro do mesmo elemento estilizado como
-        # .st-key-rec_section — antes, abrir/fechar a div em chamadas
-        # st.markdown separadas deixava o conteúdo como irmão da div, não
-        # como filho, e o fundo em degradê nunca envolvia nada.
-        with st.container(key="rec_section"):
-            st.html('<div class="section-title">✨ Quem viu isso também viu</div>')
+        st.html('<div class="section-title">Produtos</div>')
 
-            session_cats = catalogo[
-                catalogo["item_id"].isin(st.session_state.session)
-            ]["categoria"].tolist()
-            if session_cats:
-                predominant_cat = max(set(session_cats), key=session_cats.count)
-                st.html(
-                    f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>'
+        if filtered.empty:
+            if search_term or (cat_filter and cat_filter != "Todas"):
+                render_empty_state(
+                    "Nenhum resultado encontrado",
+                    f'Não encontramos nada para "{search_term}" na categoria {cat_filter}.'
+                    if search_term and cat_filter != "Todas"
+                    else f'Não encontramos nada para "{search_term}".' if search_term
+                    else f'Nenhum produto na categoria {cat_filter}.'
                 )
-
-            recs = recommend(
-                st.session_state.session,
-                model,
-                catalogo,
-                item_to_idx,
-                idx_to_item,
-                item_cat,
-                item_price,
-                k=5,
-            )
-
-            if recs.empty:
-                st.warning("Não foi possível gerar recomendações para essa sessão.")
             else:
-                render_product_grid(recs, "rec", is_recommendation=True)
+                render_empty_state(
+                    "Nenhum produto disponível",
+                    "Parece que o catálogo está vazio. Tente novamente mais tarde."
+                )
+        else:
+            count_msg = f"{len(filtered)} produto(s) encontrado(s)"
+            if search_term:
+                count_msg += f' para "{search_term}"'
+            if cat_filter and cat_filter != "Todas":
+                count_msg += f" em {cat_filter}"
+            st.html(f'<div class="results-count">{count_msg}.</div>')
+            render_product_grid(filtered, "product")
 
-                with st.expander("📊 Ver dados técnicos das recomendações"):
-                    st.dataframe(
-                        recs[["rank", "nome", "categoria", "preco", "score"]],
-                        width="stretch",
-                        hide_index=True,
-                    )
+        # ==================================================================
+        # RECOMENDAÇÕES
+        # ==================================================================
+        if cart_size > 0:
+            # st.container(key=...) garante que o título, o grid e o
+            # expander fiquem de fato dentro do mesmo elemento estilizado
+            # como .st-key-rec_section — abrir/fechar a div em chamadas
+            # separadas deixaria o conteúdo como irmão da div, não como
+            # filho, e o fundo em degradê não envolveria nada.
+            with st.container(key="rec_section"):
+                render_recommendations(
+                    catalogo, model, item_to_idx, idx_to_item, item_cat, item_price,
+                    heading="✨ Quem viu isso também viu",
+                )
 
     # ======================================================================
     # FOOTER
