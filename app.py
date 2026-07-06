@@ -14,9 +14,152 @@ CHECKPOINT_PATH = Path("recomendador_checkpoint_v4.pt")
 CATALOG_PATH = Path("catalogo_v4.csv")
 
 st.set_page_config(
-    page_title="Recomendador de Sessões",
+    page_title="Loja Mockup | Recomendador de Sessões",
     page_icon="🛍️",
     layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# ---------------------------------------------------------------------------
+# CSS customizado
+# ---------------------------------------------------------------------------
+st.markdown(
+    """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .main-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 2rem;
+            border-radius: 16px;
+            color: white;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .main-header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 700;
+        }
+
+        .main-header p {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.1rem;
+            opacity: 0.95;
+        }
+
+        .section-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin: 1.5rem 0 1rem 0;
+            color: #1f2937;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .product-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 12px;
+            margin-bottom: 0.8rem;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .product-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #111827;
+            margin-bottom: 0.3rem;
+            line-height: 1.3;
+        }
+
+        .product-price {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #059669;
+            margin-bottom: 0.3rem;
+        }
+
+        .score-badge {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .cart-item {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 0.7rem;
+            margin-bottom: 0.5rem;
+            border-left: 4px solid #667eea;
+        }
+
+        .cart-item-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #1f2937;
+        }
+
+        .cart-item-cat {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .recommendation-section {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #6b7280;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: #9ca3af;
+            font-size: 0.85rem;
+            margin-top: 3rem;
+            border-top: 1px solid #e5e7eb;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
 )
 
 # ---------------------------------------------------------------------------
@@ -135,98 +278,192 @@ def recommend(session_items, model, catalogo, item_to_idx, idx_to_item, item_cat
     resultados = resultados.sort_values("score", ascending=False).reset_index(drop=True)
     resultados["rank"] = range(1, len(resultados) + 1)
 
-    return resultados[["rank", "item_id", "nome", "categoria", "preco", "score"]]
+    return resultados[["rank", "item_id", "nome", "categoria", "preco", "score", "imagem_url"]]
 
 
 # ---------------------------------------------------------------------------
-# UI
+# Componentes de UI
+# ---------------------------------------------------------------------------
+def render_product_card(row, key_prefix, is_recommendation=False):
+    """Renderiza um card de produto."""
+    col = st.container()
+    with col:
+        st.markdown(
+            f"""
+            <div class="product-card">
+                <div>
+                    <img src="{row['imagem_url']}" class="product-image" alt="{row['nome']}">
+                    <span class="category-badge">{row['categoria']}</span>
+                    <div class="product-name">{row['nome']}</div>
+                    <div class="product-price">R$ {row['preco']:.2f}</div>
+                    {'<div class="score-badge">🔮 score: ' + f"{row['score']:.4f}" + '</div>' if is_recommendation else ''}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        btn_label = "🛒 Adicionar ao carrinho" if not is_recommendation else "👀 Ver este produto"
+        if st.button(btn_label, key=f"{key_prefix}_{row['item_id']}", use_container_width=True):
+            st.session_state.session.append(int(row["item_id"]))
+            st.rerun()
+
+
+def render_cart_sidebar(catalogo):
+    """Renderiza o carrinho/sessão na sidebar."""
+    st.sidebar.markdown("<h3 style='margin-top:0'>🛒 Seu carrinho</h3>", unsafe_allow_html=True)
+
+    if not st.session_state.session:
+        st.sidebar.markdown(
+            '<div style="padding:1rem; background:#f3f4f6; border-radius:10px; color:#6b7280; text-align:center;">'
+            'Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    total = 0.0
+    for item_id in st.session_state.session:
+        prod = catalogo[catalogo["item_id"] == item_id].iloc[0]
+        total += prod["preco"]
+        st.sidebar.markdown(
+            f"""
+            <div class="cart-item">
+                <div class="cart-item-name">{prod['nome']}</div>
+                <div class="cart-item-cat">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    st.sidebar.markdown(f"""
+        <div style="background:#1f2937; color:white; padding:0.8rem; border-radius:10px; text-align:center; margin-top:1rem;">
+            <div style="font-size:0.85rem; opacity:0.8;">Total estimado</div>
+            <div style="font-size:1.3rem; font-weight:700;">R$ {total:.2f}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    if st.sidebar.button("🗑️ Limpar carrinho", use_container_width=True):
+        st.session_state.session = []
+        st.rerun()
+
+
+# ---------------------------------------------------------------------------
+# UI principal
 # ---------------------------------------------------------------------------
 def main():
-    st.title("🛍️ Loja Mockup — Recomendador de Sessões")
-    st.markdown(
-        "Simule a navegação de um cliente e veja as recomendações geradas pelo modelo GRU treinado."
-    )
-
     model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
 
     # Estado da sessão
     if "session" not in st.session_state:
         st.session_state.session = []
 
-    col_main, col_sidebar = st.columns([3, 1])
+    # Header
+    st.markdown(
+        """
+        <div class="main-header">
+            <h1>🛍️ Loja Mockup</h1>
+            <p>Experimente nosso recomendador inteligente baseado em sessões de navegação</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-    with col_sidebar:
-        st.header("📌 Sua sessão")
-        if not st.session_state.session:
-            st.info("Clique em produtos para montar seu histórico.")
+    # Sidebar com carrinho
+    render_cart_sidebar(catalogo)
+    st.sidebar.divider()
+    st.sidebar.caption(
+        f"🔧 Modelo: GRU com {sum(p.numel() for p in model.parameters() if p.requires_grad):,} parâmetros"
+    )
+
+    # Seleção de produto
+    st.markdown('<div class="section-title">1️⃣ Escolha um produto</div>', unsafe_allow_html=True)
+
+    # Grid de produtos em destaque (primeiros 8 do catálogo, aleatoriamente)
+    featured = catalogo.sample(n=min(8, len(catalogo)), random_state=42).reset_index(drop=True)
+    cols = st.columns(4)
+    for idx, (_, row) in enumerate(featured.iterrows()):
+        with cols[idx % 4]:
+            render_product_card(row, "featured")
+
+    # Ou buscar por nome/categoria
+    with st.expander("🔍 Ou busque um produto específico"):
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            search_term = st.text_input("Buscar por nome", "", placeholder="Ex: abajur, fone, camiseta...")
+        with col2:
+            categories = ["Todas"] + sorted(catalogo["categoria"].unique().tolist())
+            selected_cat = st.selectbox("Categoria", categories)
+
+        filtered = catalogo.copy()
+        if search_term:
+            filtered = filtered[filtered["nome"].str.contains(search_term, case=False, na=False)]
+        if selected_cat != "Todas":
+            filtered = filtered[filtered["categoria"] == selected_cat]
+
+        if filtered.empty:
+            st.info("Nenhum produto encontrado.")
         else:
-            for item_id in st.session_state.session:
-                prod = catalogo[catalogo["item_id"] == item_id].iloc[0]
-                st.write(f"• {prod['nome']}")
+            st.markdown(f"<p>{len(filtered)} produto(s) encontrado(s)</p>", unsafe_allow_html=True)
+            cols = st.columns(4)
+            for idx, (_, row) in enumerate(filtered.head(12).iterrows()):
+                with cols[idx % 4]:
+                    render_product_card(row, "search")
 
-        if st.button("🗑️ Limpar sessão", use_container_width=True):
-            st.session_state.session = []
-            st.rerun()
-
-        st.divider()
-        st.caption(
-            f"Modelo: GRU com {sum(p.numel() for p in model.parameters() if p.requires_grad):,} parâmetros"
+    # Recomendações
+    if st.session_state.session:
+        st.markdown(
+            '<div class="recommendation-section">'
+            '<div class="section-title">✨ Quem viu isso também viu</div>'
+            '</div>',
+            unsafe_allow_html=True,
         )
 
-    with col_main:
-        # Escolha inicial ou adição de produto
-        st.subheader("1️⃣ Escolha um produto para começar")
-        opcoes = catalogo.sort_values("nome")
-        opcoes_display = [f"{row['nome']} ({row['categoria']}) - R$ {row['preco']:.2f}" for _, row in opcoes.iterrows()]
-        opcoes_ids = opcoes["item_id"].tolist()
+        recs = recommend(
+            st.session_state.session,
+            model,
+            catalogo,
+            item_to_idx,
+            idx_to_item,
+            item_cat,
+            item_price,
+            k=5,
+        )
 
-        escolhido_display = st.selectbox("Produto", opcoes_display, key="produto_select")
-        escolhido_id = opcoes_ids[opcoes_display.index(escolhido_display)]
-
-        col_btn, _ = st.columns([1, 3])
-        with col_btn:
-            if st.button("➕ Adicionar à sessão", use_container_width=True):
-                st.session_state.session.append(escolhido_id)
-                st.rerun()
-
-        # Recomendações
-        if st.session_state.session:
-            st.subheader("2️⃣ Quem viu isso também viu")
-            recs = recommend(
-                st.session_state.session,
-                model,
-                catalogo,
-                item_to_idx,
-                idx_to_item,
-                item_cat,
-                item_price,
-                k=5,
+        if recs.empty:
+            st.warning("Não foi possível gerar recomendações para essa sessão.")
+        else:
+            # Mostra a categoria predominante da sessão
+            session_cats = catalogo[catalogo["item_id"].isin(st.session_state.session)]["categoria"].tolist()
+            predominant_cat = max(set(session_cats), key=session_cats.count)
+            st.markdown(
+                f"<p style='color:#6b7280; margin-bottom:1rem;'>"
+                f"Baseado no seu interesse em <strong>{predominant_cat}</strong>"
+                f"</p>",
+                unsafe_allow_html=True,
             )
 
-            if recs.empty:
-                st.warning("Não foi possível gerar recomendações para essa sessão.")
-            else:
-                cols = st.columns(len(recs))
-                for idx, (_, row) in enumerate(recs.iterrows()):
-                    with cols[idx]:
-                        st.markdown(
-                            f"""
-                            <div style="border:1px solid #ddd; border-radius:10px; padding:15px; text-align:center;">
-                                <h4>#{int(row['rank'])}</h4>
-                                <p><strong>{row['nome']}</strong></p>
-                                <p style="color:#666;">{row['categoria']}</p>
-                                <p style="font-size:1.2em; font-weight:bold;">R$ {row['preco']:.2f}</p>
-                                <p style="font-size:0.9em; color:#999;">score: {row['score']:.4f}</p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                        if st.button("Ver produto", key=f"rec_{row['item_id']}"):
-                            st.session_state.session.append(int(row["item_id"]))
-                            st.rerun()
+            cols = st.columns(len(recs))
+            for idx, (_, row) in enumerate(recs.iterrows()):
+                with cols[idx]:
+                    render_product_card(row, "rec", is_recommendation=True)
 
-                with st.expander("📊 Ver tabela de recomendações"):
-                    st.dataframe(recs, use_container_width=True)
+            with st.expander("📊 Ver dados técnicos das recomendações"):
+                st.dataframe(
+                    recs[["rank", "nome", "categoria", "preco", "score"]],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+    # Footer
+    st.markdown(
+        """
+        <div class="footer">
+            <p>🎓 Projeto acadêmico — Recomendador de Sessões com PyTorch + GRU</p>
+            <p>Deploy automático via Streamlit Cloud</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 if __name__ == "__main__":
