@@ -1100,7 +1100,11 @@ def main():
         st.session_state.prev_cart_size = 0
 
     # --- CSS ---
-    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+    # Usa st.html() para injetar CSS de forma confiável no Streamlit Cloud
+    try:
+        st.html(f"<style>{CUSTOM_CSS}</style>")
+    except Exception:
+        st.markdown(f"<style>{CUSTOM_CSS}</style>", unsafe_allow_html=True)
 
     # --- Query params ---
     handle_query_params()
