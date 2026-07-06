@@ -1,5 +1,6 @@
 import random
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 import numpy as np
 import pandas as pd
@@ -21,146 +22,705 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
-# CSS customizado
+# Design Tokens — Material Design 3 (Light)
 # ---------------------------------------------------------------------------
-st.markdown(
-    """
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+PRIMARY = "#6750A4"
+ON_PRIMARY = "#FFFFFF"
+PRIMARY_CONTAINER = "#EADDFF"
+ON_PRIMARY_CONTAINER = "#21005D"
+SECONDARY = "#625B71"
+ON_SECONDARY = "#FFFFFF"
+SECONDARY_CONTAINER = "#E8DEF8"
+ON_SECONDARY_CONTAINER = "#1D192B"
+ERROR = "#B3261E"
+ERROR_CONTAINER = "#F9DEDC"
+BACKGROUND = "#FFFBFE"
+ON_BACKGROUND = "#1C1B1F"
+SURFACE = "#FFFBFE"
+ON_SURFACE = "#1C1B1F"
+SURFACE_VARIANT = "#E7E0EC"
+ON_SURFACE_VARIANT = "#49454F"
+OUTLINE = "#79747E"
+OUTLINE_VARIANT = "#CAC4D0"
+SHADOW = "#000000"
 
-        html, body, [class*="css"] {
-            font-family: 'Inter', sans-serif;
-        }
+# ---------------------------------------------------------------------------
+# CSS customizado — MD3 completo
+# ---------------------------------------------------------------------------
+CUSTOM_CSS = f"""
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-        .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 16px;
-            color: white;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
+    :root {{
+        --md-primary: {PRIMARY};
+        --md-on-primary: {ON_PRIMARY};
+        --md-primary-container: {PRIMARY_CONTAINER};
+        --md-on-primary-container: {ON_PRIMARY_CONTAINER};
+        --md-secondary: {SECONDARY};
+        --md-on-secondary: {ON_SECONDARY};
+        --md-secondary-container: {SECONDARY_CONTAINER};
+        --md-on-secondary-container: {ON_SECONDARY_CONTAINER};
+        --md-error: {ERROR};
+        --md-error-container: {ERROR_CONTAINER};
+        --md-background: {BACKGROUND};
+        --md-on-background: {ON_BACKGROUND};
+        --md-surface: {SURFACE};
+        --md-on-surface: {ON_SURFACE};
+        --md-surface-variant: {SURFACE_VARIANT};
+        --md-on-surface-variant: {ON_SURFACE_VARIANT};
+        --md-outline: {OUTLINE};
+        --md-outline-variant: {OUTLINE_VARIANT};
+        --md-shadow: {SHADOW};
+        --md-shape-xs: 4px;
+        --md-shape-sm: 8px;
+        --md-shape-md: 12px;
+        --md-shape-lg: 16px;
+        --md-shape-xl: 28px;
+        --md-elevation-1: 0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
+        --md-elevation-2: 0 2px 6px 2px rgba(0,0,0,0.15), 0 1px 2px 0 rgba(0,0,0,0.30);
+        --md-elevation-3: 0 4px 8px 3px rgba(0,0,0,0.15), 0 1px 3px 0 rgba(0,0,0,0.30);
+        --md-elevation-4: 0 6px 10px 4px rgba(0,0,0,0.15), 0 2px 4px 0 rgba(0,0,0,0.30);
+        --max-width: 1280px;
+    }}
 
-        .main-header h1 {
-            margin: 0;
-            font-size: 2.2rem;
-            font-weight: 700;
-        }
+    * {{ font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }}
 
-        .main-header p {
-            margin: 0.5rem 0 0 0;
-            font-size: 1.1rem;
-            opacity: 0.95;
-        }
+    html, body, [class*="css"] {{
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: var(--md-background);
+        color: var(--md-on-background);
+    }}
 
-        .section-title {
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin: 1.5rem 0 1rem 0;
-            color: #1f2937;
-        }
+    .main .block-container {{
+        max-width: var(--max-width);
+        padding: 0 1rem !important;
+    }}
 
-        .product-card {
-            background: white;
-            border-radius: 16px;
-            padding: 1rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-            border: 1px solid #e5e7eb;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+    /* ===== Top App Bar ===== */
+    .app-bar {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 0;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--md-outline-variant);
+    }}
 
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-        }
+    .app-bar-brand {{
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        text-decoration: none;
+    }}
 
-        .product-image {
-            width: 100%;
-            aspect-ratio: 1;
-            object-fit: cover;
-            border-radius: 12px;
-            margin-bottom: 0.8rem;
-        }
+    .app-bar-brand-icon {{
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--md-primary), var(--md-secondary));
+        border-radius: var(--md-shape-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: white;
+        flex-shrink: 0;
+    }}
 
-        .category-badge {
-            display: inline-block;
-            background: #f3f4f6;
-            color: #4b5563;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
+    .app-bar-brand-text {{
+        font-size: 1.375rem;
+        font-weight: 600;
+        line-height: 1.4;
+        color: var(--md-on-surface);
+        margin: 0;
+    }}
 
-        .product-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: #111827;
-            margin-bottom: 0.3rem;
-            line-height: 1.3;
-        }
+    .app-bar-brand-sub {{
+        font-size: 0.75rem;
+        color: var(--md-on-surface-variant);
+        margin: 0;
+        font-weight: 400;
+    }}
 
-        .product-price {
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: #059669;
-            margin-bottom: 0.3rem;
-        }
+    .app-bar-actions {{
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }}
 
-        .score-badge {
-            font-size: 0.8rem;
-            color: #6b7280;
-        }
+    /* ===== Cart Badge ===== */
+    .cart-badge-btn {{
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--md-surface-variant);
+        border: none;
+        cursor: default;
+        font-size: 1.25rem;
+        transition: background 0.2s;
+    }}
 
-        .cart-item {
-            background: #f9fafb;
-            border-radius: 10px;
-            padding: 0.7rem;
-            margin-bottom: 0.5rem;
-            border-left: 4px solid #667eea;
-        }
+    .cart-badge-count {{
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: var(--md-primary);
+        color: white;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        min-width: 18px;
+        height: 18px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        transition: transform 0.2s ease;
+    }}
 
-        .cart-item-name {
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #1f2937;
-        }
+    .cart-badge-count.pop {{
+        animation: badgePop 0.35s ease;
+    }}
 
-        .cart-item-cat {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
+    @keyframes badgePop {{
+        0% {{ transform: scale(1); }}
+        40% {{ transform: scale(1.35); }}
+        100% {{ transform: scale(1); }}
+    }}
 
-        .recommendation-section {
-            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-top: 2rem;
-        }
+    /* ===== Hero ===== */
+    .hero {{
+        background: linear-gradient(135deg, var(--md-primary-container) 0%, var(--md-secondary-container) 100%);
+        border-radius: var(--md-shape-lg);
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+    }}
 
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: #6b7280;
-        }
+    .hero-title {{
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.2;
+        color: var(--md-on-primary-container);
+        margin: 0 0 0.5rem 0;
+    }}
 
-        .footer {
-            text-align: center;
-            padding: 2rem 0;
-            color: #9ca3af;
-            font-size: 0.85rem;
-            margin-top: 3rem;
-            border-top: 1px solid #e5e7eb;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    .hero-subtitle {{
+        font-size: 1rem;
+        line-height: 1.5;
+        color: var(--md-on-surface-variant);
+        margin: 0;
+        max-width: 520px;
+    }}
+
+    /* ===== Section ===== */
+    .section-title {{
+        font-size: 1.5rem;
+        font-weight: 700;
+        line-height: 1.3;
+        color: var(--md-on-surface);
+        margin: 1.5rem 0 0.25rem 0;
+    }}
+
+    .section-subtitle {{
+        font-size: 0.875rem;
+        color: var(--md-on-surface-variant);
+        margin: 0 0 1rem 0;
+    }}
+
+    /* ===== Product Grid (CSS Grid responsivo) ===== */
+    .product-grid, .rec-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+        margin-bottom: 0.5rem;
+    }}
+
+    @media (max-width: 1100px) {{
+        .product-grid, .rec-grid {{ grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }}
+    }}
+
+    @media (max-width: 700px) {{
+        .product-grid, .rec-grid {{ grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }}
+    }}
+
+    @media (max-width: 480px) {{
+        .product-grid, .rec-grid {{ grid-template-columns: 1fr; gap: 0.75rem; }}
+    }}
+
+    /* ===== Product Card ===== */
+    .product-card {{
+        background: var(--md-surface);
+        border-radius: var(--md-shape-md);
+        box-shadow: var(--md-elevation-1);
+        overflow: hidden;
+        transition: box-shadow 0.25s ease, transform 0.25s ease;
+        display: flex;
+        flex-direction: column;
+    }}
+
+    .product-card:hover {{
+        box-shadow: var(--md-elevation-3);
+        transform: translateY(-3px);
+    }}
+
+    .product-card-image-wrapper {{
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: var(--md-surface-variant);
+    }}
+
+    .product-card-image {{
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+        display: block;
+    }}
+
+    .product-card:hover .product-card-image {{
+        transform: scale(1.06);
+    }}
+
+    .product-card-body {{
+        padding: 0.875rem;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }}
+
+    .product-card-category {{
+        display: inline-block;
+        background: var(--md-secondary-container);
+        color: var(--md-on-secondary-container);
+        padding: 0.15rem 0.55rem;
+        border-radius: var(--md-shape-xs);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        align-self: flex-start;
+        margin-bottom: 0.4rem;
+    }}
+
+    .product-card-name {{
+        font-size: 0.9375rem;
+        font-weight: 600;
+        line-height: 1.3;
+        color: var(--md-on-surface);
+        margin: 0 0 0.2rem 0;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }}
+
+    .product-card-price {{
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--md-primary);
+        margin: auto 0 0.65rem 0;
+    }}
+
+    .product-card-btn {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        width: 100%;
+        padding: 0.55rem 0.875rem;
+        border-radius: var(--md-shape-xl);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        border: 1px solid var(--md-outline);
+        background: transparent;
+        color: var(--md-primary);
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }}
+
+    .product-card-btn:hover {{
+        background: var(--md-primary-container);
+        border-color: var(--md-primary);
+    }}
+
+    .product-card-btn:active {{
+        background: var(--md-primary);
+        color: white;
+        border-color: var(--md-primary);
+    }}
+
+    .product-card-btn.primary {{
+        background: var(--md-primary);
+        border-color: var(--md-primary);
+        color: white;
+    }}
+
+    .product-card-btn.primary:hover {{
+        box-shadow: var(--md-elevation-1);
+    }}
+
+    /* ===== Recommendation Section ===== */
+    .rec-section {{
+        background: linear-gradient(135deg, var(--md-primary-container) 0%, var(--md-secondary-container) 100%);
+        border-radius: var(--md-shape-lg);
+        padding: 1.75rem;
+        margin: 2rem 0;
+    }}
+
+    .rec-section .section-title {{
+        color: var(--md-on-primary-container);
+        margin-top: 0;
+    }}
+
+    .rec-section .section-subtitle {{
+        color: var(--md-on-surface-variant);
+    }}
+
+    /* ===== Recommendation Card ===== */
+    .rec-card {{
+        position: relative;
+        background: var(--md-surface);
+        border-radius: var(--md-shape-md);
+        box-shadow: var(--md-elevation-2);
+        overflow: hidden;
+        transition: box-shadow 0.25s ease, transform 0.25s ease;
+        display: flex;
+        flex-direction: column;
+    }}
+
+    .rec-card:hover {{
+        box-shadow: var(--md-elevation-4);
+        transform: translateY(-3px);
+    }}
+
+    .rec-card .product-card-image-wrapper {{
+        aspect-ratio: 1;
+        overflow: hidden;
+        background: var(--md-surface-variant);
+    }}
+
+    .rec-card .product-card-image {{
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s ease;
+        display: block;
+    }}
+
+    .rec-card:hover .product-card-image {{
+        transform: scale(1.06);
+    }}
+
+    .rec-card-badge {{
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: var(--md-primary);
+        color: white;
+        padding: 0.15rem 0.5rem;
+        border-radius: var(--md-shape-xs);
+        font-size: 0.6875rem;
+        font-weight: 600;
+        z-index: 2;
+        line-height: 1.4;
+    }}
+
+    .rec-card .product-card-body {{
+        padding: 0.875rem;
+    }}
+
+    .score-badge {{
+        font-size: 0.6875rem;
+        color: var(--md-on-surface-variant);
+        margin-bottom: 0.5rem;
+    }}
+
+    /* ===== Search + Filters ===== */
+    .search-section {{
+        margin-bottom: 1.5rem;
+    }}
+
+    .search-wrapper {{
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: var(--md-surface);
+        border: 1px solid var(--md-outline);
+        border-radius: var(--md-shape-xl);
+        padding: 0 0.75rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }}
+
+    .search-wrapper:focus-within {{
+        border-color: var(--md-primary);
+        box-shadow: 0 0 0 3px rgba(103, 80, 164, 0.18);
+    }}
+
+    .search-icon {{
+        font-size: 1.125rem;
+        opacity: 0.5;
+        flex-shrink: 0;
+    }}
+
+    .search-wrapper input {{
+        border: none !important;
+        background: transparent !important;
+        padding: 0.75rem 0 !important;
+        font-size: 0.9375rem !important;
+        box-shadow: none !important;
+        flex: 1;
+        outline: none;
+    }}
+
+    .search-wrapper input:focus {{
+        box-shadow: none !important;
+        border: none !important;
+    }}
+
+    /* ===== Category Chips ===== */
+    .chips-row {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }}
+
+    .chip {{
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.35rem 0.875rem;
+        border-radius: var(--md-shape-xl);
+        font-size: 0.8125rem;
+        font-weight: 500;
+        border: 1px solid var(--md-outline);
+        background: transparent;
+        color: var(--md-on-surface-variant);
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }}
+
+    .chip:hover {{
+        background: var(--md-secondary-container);
+        border-color: var(--md-secondary);
+        color: var(--md-on-secondary-container);
+    }}
+
+    .chip.active {{
+        background: var(--md-secondary-container);
+        border-color: var(--md-secondary);
+        color: var(--md-on-secondary-container);
+        font-weight: 600;
+    }}
+
+    /* ===== Results Count ===== */
+    .results-count {{
+        font-size: 0.875rem;
+        color: var(--md-on-surface-variant);
+        margin: 0.5rem 0 0.75rem 0;
+    }}
+
+    /* ===== Cart Sidebar ===== */
+    [data-testid="stSidebar"] {{
+        background: var(--md-surface);
+        border-left: 1px solid var(--md-outline-variant);
+    }}
+
+    [data-testid="stSidebar"] > div:first-child {{
+        padding: 1.5rem 1rem !important;
+    }}
+
+    .cart-title {{
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--md-on-surface);
+        margin: 0 0 0.75rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }}
+
+    .cart-item {{
+        background: var(--md-surface-variant);
+        border-radius: var(--md-shape-sm);
+        padding: 0.7rem 0.75rem;
+        margin-bottom: 0.5rem;
+        position: relative;
+    }}
+
+    .cart-item-name {{
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--md-on-surface);
+        margin: 0 0 0.1rem 0;
+        padding-right: 1.25rem;
+    }}
+
+    .cart-item-detail {{
+        font-size: 0.75rem;
+        color: var(--md-on-surface-variant);
+        margin: 0;
+    }}
+
+    .cart-item-remove {{
+        position: absolute;
+        top: 0.35rem;
+        right: 0.35rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--md-on-surface-variant);
+        font-size: 0.875rem;
+        padding: 0.2rem;
+        border-radius: 50%;
+        line-height: 1;
+        text-decoration: none;
+        transition: all 0.15s;
+    }}
+
+    .cart-item-remove:hover {{
+        background: var(--md-error-container);
+        color: var(--md-error);
+    }}
+
+    .cart-total {{
+        background: var(--md-primary);
+        color: white;
+        border-radius: var(--md-shape-sm);
+        padding: 0.875rem;
+        text-align: center;
+        margin: 0.75rem 0;
+    }}
+
+    .cart-total-label {{
+        font-size: 0.75rem;
+        opacity: 0.85;
+    }}
+
+    .cart-total-value {{
+        font-size: 1.25rem;
+        font-weight: 700;
+    }}
+
+    .cart-empty {{
+        text-align: center;
+        padding: 1.5rem 1rem;
+        color: var(--md-on-surface-variant);
+    }}
+
+    .cart-empty-icon {{
+        font-size: 2.5rem;
+        opacity: 0.4;
+        margin-bottom: 0.5rem;
+    }}
+
+    .cart-empty-text {{
+        font-size: 0.875rem;
+        margin: 0;
+    }}
+
+    .cart-sidebar-divider {{
+        border: none;
+        border-top: 1px solid var(--md-outline-variant);
+        margin: 0.75rem 0;
+    }}
+
+    /* ===== Empty State ===== */
+    .empty-state {{
+        text-align: center;
+        padding: 3rem 1rem;
+    }}
+
+    .empty-state-icon {{
+        font-size: 3.5rem;
+        opacity: 0.35;
+        margin-bottom: 0.75rem;
+    }}
+
+    .empty-state-title {{
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--md-on-surface);
+        margin: 0 0 0.35rem 0;
+    }}
+
+    .empty-state-text {{
+        font-size: 0.875rem;
+        color: var(--md-on-surface-variant);
+        margin: 0;
+    }}
+
+    /* ===== Skeleton ===== */
+    .skeleton-grid {{
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }}
+
+    .skeleton-card {{
+        background: var(--md-surface);
+        border-radius: var(--md-shape-md);
+        box-shadow: var(--md-elevation-1);
+        overflow: hidden;
+    }}
+
+    .skeleton-image {{
+        width: 100%;
+        aspect-ratio: 1;
+        background: linear-gradient(90deg, var(--md-surface-variant) 25%, #f5f0f8 50%, var(--md-surface-variant) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+    }}
+
+    .skeleton-body {{
+        padding: 0.875rem;
+    }}
+
+    .skeleton-line {{
+        height: 12px;
+        margin-bottom: 8px;
+        border-radius: var(--md-shape-xs);
+        background: linear-gradient(90deg, var(--md-surface-variant) 25%, #f5f0f8 50%, var(--md-surface-variant) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.5s ease-in-out infinite;
+    }}
+
+    .skeleton-line.short {{ width: 50%; }}
+    .skeleton-line.medium {{ width: 75%; }}
+
+    @keyframes shimmer {{
+        0% {{ background-position: 200% 0; }}
+        100% {{ background-position: -200% 0; }}
+    }}
+
+    /* ===== Footer ===== */
+    .footer {{
+        text-align: center;
+        padding: 2rem 0;
+        margin-top: 3rem;
+        border-top: 1px solid var(--md-outline-variant);
+        color: var(--md-on-surface-variant);
+        font-size: 0.8125rem;
+    }}
+
+    .footer strong {{
+        color: var(--md-primary);
+    }}
+
+    /* ===== Helpers ===== */
+    .stButton button {{ font-family: 'Inter', sans-serif !important; }}
+    #MainMenu {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    header[data-testid="stHeader"] {{ background: transparent; }}
+"""
+
 
 # ---------------------------------------------------------------------------
 # Arquitetura do modelo (deve bater com o notebook)
@@ -201,7 +761,7 @@ class SessionGRU(nn.Module):
 
 
 # ---------------------------------------------------------------------------
-# Cache de carregamento (evita recarregar a cada interação)
+# Cache de carregamento
 # ---------------------------------------------------------------------------
 @st.cache_resource
 def load_model_and_catalog():
@@ -225,7 +785,6 @@ def load_model_and_catalog():
     item_to_idx = checkpoint["item_to_idx"]
     idx_to_item = checkpoint["idx_to_item"]
 
-    # Recria tensores de features dos itens
     item_cat = torch.full(
         (checkpoint["num_items"] + 1,),
         fill_value=checkpoint["cat_pad_idx"],
@@ -244,7 +803,7 @@ def load_model_and_catalog():
 
 
 # ---------------------------------------------------------------------------
-# Função de recomendação
+# Função de recomendação (inalterada)
 # ---------------------------------------------------------------------------
 def recommend(session_items, model, catalogo, item_to_idx, idx_to_item, item_cat, item_price, k=5):
     known = [i for i in session_items if i in item_to_idx]
@@ -261,7 +820,6 @@ def recommend(session_items, model, catalogo, item_to_idx, idx_to_item, item_cat
         logits = model(x, lengths, cat_x, price_x)
         probs = torch.softmax(logits, dim=1)
 
-    # Remove itens já vistos
     seen = set(indexed)
     num_items = len(idx_to_item)
     for idx in seen:
@@ -284,139 +842,368 @@ def recommend(session_items, model, catalogo, item_to_idx, idx_to_item, item_cat
 # ---------------------------------------------------------------------------
 # Componentes de UI
 # ---------------------------------------------------------------------------
-def render_product_card(row, key_prefix, is_recommendation=False):
-    """Renderiza um card de produto."""
-    col = st.container()
-    with col:
-        st.markdown(
-            f"""
-            <div class="product-card">
-                <div>
-                    <img src="{row['imagem_url']}" class="product-image" alt="{row['nome']}">
-                    <span class="category-badge">{row['categoria']}</span>
-                    <div class="product-name">{row['nome']}</div>
-                    <div class="product-price">R$ {row['preco']:.2f}</div>
-                    {'<div class="score-badge">🔮 score: ' + f"{row['score']:.4f}" + '</div>' if is_recommendation else ''}
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        btn_label = "🛒 Adicionar ao carrinho" if not is_recommendation else "👀 Ver este produto"
-        if st.button(btn_label, key=f"{key_prefix}_{row['item_id']}", use_container_width=True):
-            st.session_state.session.append(int(row["item_id"]))
-            st.rerun()
+def build_card_html(row, is_recommendation=False):
+    """Gera HTML de um card MD3."""
+    action_type = "add_item"
+    btn_text = "Adicionar"
+    btn_icon = "🛒"
+    btn_class = "product-card-btn"
+
+    if is_recommendation:
+        btn_class += " primary"
+        rank = row.get("rank", "")
+        rank_badge = f'<div class="rec-card-badge">#{rank}</div>' if rank else ""
+    else:
+        rank_badge = ""
+
+    score_html = ""
+    if is_recommendation and "score" in row:
+        score_html = f'<div class="score-badge">Score: {row["score"]:.4f}</div>'
+
+    card_class = "rec-card" if is_recommendation else "product-card"
+
+    return f"""
+    <div class="{card_class}">
+        {rank_badge}
+        <div class="product-card-image-wrapper">
+            <img src="{row['imagem_url']}" class="product-card-image" alt="{row['nome']}" loading="lazy">
+        </div>
+        <div class="product-card-body">
+            <span class="product-card-category">{row['categoria']}</span>
+            <h3 class="product-card-name">{row['nome']}</h3>
+            <p class="product-card-price">R$ {row['preco']:.2f}</p>
+            {score_html}
+            <a href="?{action_type}={row['item_id']}" class="{btn_class}">{btn_icon} {btn_text}</a>
+        </div>
+    </div>
+    """
 
 
-def render_cart_sidebar(catalogo):
-    """Renderiza o carrinho/sessão na sidebar."""
-    st.sidebar.markdown("<h3 style='margin-top:0'>🛒 Seu carrinho</h3>", unsafe_allow_html=True)
-
-    if not st.session_state.session:
-        st.sidebar.markdown(
-            '<div style="padding:1rem; background:#f3f4f6; border-radius:10px; color:#6b7280; text-align:center;">'
-            'Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!'
-            '</div>',
-            unsafe_allow_html=True,
+def render_product_grid(products, is_recommendation=False):
+    """Renderiza grid responsivo de cards."""
+    if products.empty:
+        render_empty_state(
+            "Nenhum produto encontrado",
+            "Tente ajustar sua busca ou explorar outras categorias."
         )
         return
 
-    total = 0.0
-    for item_id in st.session_state.session:
-        prod = catalogo[catalogo["item_id"] == item_id].iloc[0]
-        total += prod["preco"]
-        st.sidebar.markdown(
-            f"""
-            <div class="cart-item">
-                <div class="cart-item-name">{prod['nome']}</div>
-                <div class="cart-item-cat">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    cards_html = "".join(build_card_html(row, is_recommendation) for _, row in products.iterrows())
+    grid_class = "rec-grid" if is_recommendation else "product-grid"
+    st.markdown(f'<div class="{grid_class}">{cards_html}</div>', unsafe_allow_html=True)
 
-    st.sidebar.markdown(f"""
-        <div style="background:#1f2937; color:white; padding:0.8rem; border-radius:10px; text-align:center; margin-top:1rem;">
-            <div style="font-size:0.85rem; opacity:0.8;">Total estimado</div>
-            <div style="font-size:1.3rem; font-weight:700;">R$ {total:.2f}</div>
+
+def render_skeleton_grid():
+    """Skeleton loading enquanto o modelo carrega."""
+    st.markdown("""
+        <div class="skeleton-grid">
+            <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+            <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+            <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
+            <div class="skeleton-card"><div class="skeleton-image"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium"></div></div></div>
         </div>
     """, unsafe_allow_html=True)
 
-    if st.sidebar.button("🗑️ Limpar carrinho", use_container_width=True):
+
+def render_empty_state(title, message):
+    """Empty state amigável."""
+    st.markdown(f"""
+        <div class="empty-state">
+            <div class="empty-state-icon">🔍</div>
+            <div class="empty-state-title">{title}</div>
+            <div class="empty-state-text">{message}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+def render_app_bar(cart_size, animate_badge=False):
+    """App bar com marca e badge do carrinho."""
+    badge_class = "cart-badge-count" + (" pop" if animate_badge else "")
+    badge_html = f'<span class="{badge_class}">{cart_size}</span>' if cart_size > 0 else ""
+
+    st.markdown(f"""
+        <div class="app-bar">
+            <div class="app-bar-brand">
+                <div class="app-bar-brand-icon">🛍️</div>
+                <div>
+                    <div class="app-bar-brand-text">Loja Mockup</div>
+                    <div class="app-bar-brand-sub">Recomendador Inteligente</div>
+                </div>
+            </div>
+            <div class="app-bar-actions">
+                <div class="cart-badge-btn">
+                    🛒{badge_html}
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+def render_hero(has_items=False):
+    """Hero banner com CTA contextual."""
+    if has_items:
+        st.markdown(f"""
+            <div class="hero" style="padding:1.5rem 2rem;">
+                <div class="hero-title" style="font-size:1.375rem;">Continue explorando 🚀</div>
+                <div class="hero-subtitle">Adicione mais produtos ao carrinho para recomendações ainda melhores.</div>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="hero">
+                <div class="hero-title">Seu próximo produto está a um clique 🎯</div>
+                <div class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+
+def render_search_section(search_term, selected_category, categories):
+    """Search input + category chips."""
+    st.markdown('<div class="search-section">', unsafe_allow_html=True)
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown('<div class="search-wrapper"><span class="search-icon">🔍</span>', unsafe_allow_html=True)
+        search_term = st.text_input(
+            "Buscar",
+            value=search_term,
+            placeholder="Buscar produtos...",
+            label_visibility="collapsed",
+            key="search_input",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    with col2:
+        st.selectbox(
+            "Categoria",
+            categories,
+            index=categories.index(selected_category) if selected_category in categories else 0,
+            label_visibility="collapsed",
+            key="cat_select",
+        )
+
+    # Chips de categoria
+    chips_html = '<div class="chips-row">'
+    for cat in categories:
+        active = cat == st.session_state.get("cat_select", "Todas")
+        chips_html += f'<a href="?category={quote(cat)}" class="chip{" active" if active else ""}">{cat}</a>'
+    chips_html += "</div>"
+    st.markdown(chips_html, unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+    return search_term
+
+
+def render_cart_sidebar(catalogo):
+    """Sidebar do carrinho com itens, total e ações."""
+    st.sidebar.markdown('<div class="cart-title">🛒 Carrinho</div>', unsafe_allow_html=True)
+
+    session = st.session_state.session
+    if not session:
+        st.sidebar.markdown("""
+            <div class="cart-empty">
+                <div class="cart-empty-icon">🛒</div>
+                <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
+            </div>
+        """, unsafe_allow_html=True)
+        return
+
+    total = 0.0
+    for item_id in session:
+        prod = catalogo[catalogo["item_id"] == item_id]
+        if prod.empty:
+            continue
+        prod = prod.iloc[0]
+        total += prod["preco"]
+        st.sidebar.markdown(f"""
+            <div class="cart-item">
+                <a href="?remove_item={item_id}" class="cart-item-remove" title="Remover">✕</a>
+                <div class="cart-item-name">{prod['nome']}</div>
+                <div class="cart-item-detail">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.sidebar.markdown(f"""
+        <div class="cart-total">
+            <div class="cart-total-label">Total estimado</div>
+            <div class="cart-total-value">R$ {total:.2f}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.sidebar.markdown('<hr class="cart-sidebar-divider">', unsafe_allow_html=True)
+
+    if st.sidebar.button("🗑️ Limpar carrinho", use_container_width=True, type="secondary"):
         st.session_state.session = []
         st.rerun()
+
+
+def render_footer():
+    """Footer da aplicação."""
+    st.markdown("""
+        <div class="footer">
+            Projeto acadêmico — <strong>Recomendador de Sessões</strong> com PyTorch + GRU
+        </div>
+    """, unsafe_allow_html=True)
+
+
+# ---------------------------------------------------------------------------
+# Tratamento de query params (interação via links HTML)
+# ---------------------------------------------------------------------------
+def handle_query_params():
+    """Processa ações disparadas por links nos cards."""
+    params = st.query_params.to_dict()
+
+    if "add_item" in params:
+        try:
+            item_id = int(params["add_item"][0])
+            prod = st.session_state.catalogo[
+                st.session_state.catalogo["item_id"] == item_id
+            ]
+            if not prod.empty and item_id not in st.session_state.session:
+                st.session_state.session.append(item_id)
+                st.toast(f"✅ {prod.iloc[0]['nome']} adicionado ao carrinho!")
+            st.query_params.clear()
+            st.rerun()
+        except (ValueError, IndexError):
+            st.query_params.clear()
+            st.rerun()
+
+    elif "remove_item" in params:
+        try:
+            item_id = int(params["remove_item"][0])
+            st.session_state.session = [
+                i for i in st.session_state.session if i != item_id
+            ]
+            st.query_params.clear()
+            st.rerun()
+        except ValueError:
+            st.query_params.clear()
+            st.rerun()
 
 
 # ---------------------------------------------------------------------------
 # UI principal
 # ---------------------------------------------------------------------------
 def main():
-    model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
+    # --- Loading state ---
+    with st.spinner("Carregando modelo de recomendação..."):
+        model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
 
-    # Estado da sessão
+    # Armazena catálogo para acesso global
+    st.session_state.catalogo = catalogo
+    st.session_state.model = model
+
+    # --- Estado da sessão ---
     if "session" not in st.session_state:
         st.session_state.session = []
+    if "prev_cart_size" not in st.session_state:
+        st.session_state.prev_cart_size = 0
 
-    # Header
-    st.markdown(
-        """
-        <div class="main-header">
-            <h1>🛍️ Loja Mockup</h1>
-            <p>Experimente nosso recomendador inteligente baseado em sessões de navegação</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    # --- CSS ---
+    st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+    # --- Query params ---
+    handle_query_params()
+
+    # --- Estado atual ---
+    cart_size = len(st.session_state.session)
+    animate_badge = cart_size > st.session_state.prev_cart_size
+    st.session_state.prev_cart_size = cart_size
+
+    # ======================================================================
+    # TOP APP BAR
+    # ======================================================================
+    render_app_bar(cart_size, animate_badge)
+
+    # ======================================================================
+    # HERO
+    # ======================================================================
+    render_hero(has_items=cart_size > 0)
+
+    # ======================================================================
+    # SEARCH + FILTROS
+    # ======================================================================
+    categories = ["Todas"] + sorted(catalogo["categoria"].unique().tolist())
+
+    # Inicializa filtros se não existirem
+    if "search_input" not in st.session_state:
+        st.session_state.search_input = ""
+    if "cat_select" not in st.session_state:
+        st.session_state.cat_select = "Todas"
+
+    # Aplica query param de categoria se presente
+    if "category" in st.query_params.to_dict():
+        cat = st.query_params["category"]
+        if isinstance(cat, list):
+            cat = cat[0]
+        cat = unquote(cat)
+        if cat in categories:
+            st.session_state.cat_select = cat
+        st.query_params.clear()
+        st.rerun()
+
+    search_term = render_search_section(
+        st.session_state.search_input,
+        st.session_state.cat_select,
+        categories,
     )
 
-    # Sidebar com carrinho
-    render_cart_sidebar(catalogo)
-    st.sidebar.divider()
-    st.sidebar.caption(
-        f"🔧 Modelo: GRU com {sum(p.numel() for p in model.parameters() if p.requires_grad):,} parâmetros"
-    )
+    # ======================================================================
+    # CATÁLOGO / PRODUTOS
+    # ======================================================================
+    filtered = catalogo.copy()
+    if search_term:
+        filtered = filtered[
+            filtered["nome"].str.contains(search_term, case=False, na=False)
+        ]
+    cat_filter = st.session_state.get("cat_select", "Todas")
+    if cat_filter and cat_filter != "Todas":
+        filtered = filtered[filtered["categoria"] == cat_filter]
 
-    # Seleção de produto
-    st.markdown('<div class="section-title">1️⃣ Escolha um produto</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-title">Produtos</div>', unsafe_allow_html=True)
 
-    # Grid de produtos em destaque (primeiros 8 do catálogo, aleatoriamente)
-    featured = catalogo.sample(n=min(8, len(catalogo)), random_state=42).reset_index(drop=True)
-    cols = st.columns(4)
-    for idx, (_, row) in enumerate(featured.iterrows()):
-        with cols[idx % 4]:
-            render_product_card(row, "featured")
-
-    # Ou buscar por nome/categoria
-    with st.expander("🔍 Ou busque um produto específico"):
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            search_term = st.text_input("Buscar por nome", "", placeholder="Ex: abajur, fone, camiseta...")
-        with col2:
-            categories = ["Todas"] + sorted(catalogo["categoria"].unique().tolist())
-            selected_cat = st.selectbox("Categoria", categories)
-
-        filtered = catalogo.copy()
-        if search_term:
-            filtered = filtered[filtered["nome"].str.contains(search_term, case=False, na=False)]
-        if selected_cat != "Todas":
-            filtered = filtered[filtered["categoria"] == selected_cat]
-
-        if filtered.empty:
-            st.info("Nenhum produto encontrado.")
+    if filtered.empty:
+        if search_term or (cat_filter and cat_filter != "Todas"):
+            render_empty_state(
+                "Nenhum resultado encontrado",
+                f"Não encontramos nada para \"{search_term}\" na categoria {cat_filter}."
+                if search_term and cat_filter != "Todas"
+                else f"Não encontramos nada para \"{search_term}\"." if search_term
+                else f"Nenhum produto na categoria {cat_filter}."
+            )
         else:
-            st.markdown(f"<p>{len(filtered)} produto(s) encontrado(s)</p>", unsafe_allow_html=True)
-            cols = st.columns(4)
-            for idx, (_, row) in enumerate(filtered.head(12).iterrows()):
-                with cols[idx % 4]:
-                    render_product_card(row, "search")
+            render_empty_state(
+                "Nenhum produto disponível",
+                "Parece que o catálogo está vazio. Tente novamente mais tarde."
+            )
+    else:
+        count_msg = f"{len(filtered)} produto(s) encontrado(s)"
+        if search_term:
+            count_msg += f' para "{search_term}"'
+        if cat_filter and cat_filter != "Todas":
+            count_msg += f" em {cat_filter}"
+        st.markdown(f'<div class="results-count">{count_msg}.</div>', unsafe_allow_html=True)
+        render_product_grid(filtered)
 
-    # Recomendações
-    if st.session_state.session:
+    # ======================================================================
+    # RECOMENDAÇÕES
+    # ======================================================================
+    if cart_size > 0:
         st.markdown(
-            '<div class="recommendation-section">'
-            '<div class="section-title">✨ Quem viu isso também viu</div>'
-            '</div>',
+            '<div class="rec-section">'
+            '<div class="section-title">✨ Quem viu isso também viu</div>',
             unsafe_allow_html=True,
         )
+
+        session_cats = catalogo[
+            catalogo["item_id"].isin(st.session_state.session)
+        ]["categoria"].tolist()
+        if session_cats:
+            predominant_cat = max(set(session_cats), key=session_cats.count)
+            st.markdown(
+                f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>',
+                unsafe_allow_html=True,
+            )
 
         recs = recommend(
             st.session_state.session,
@@ -432,20 +1219,7 @@ def main():
         if recs.empty:
             st.warning("Não foi possível gerar recomendações para essa sessão.")
         else:
-            # Mostra a categoria predominante da sessão
-            session_cats = catalogo[catalogo["item_id"].isin(st.session_state.session)]["categoria"].tolist()
-            predominant_cat = max(set(session_cats), key=session_cats.count)
-            st.markdown(
-                f"<p style='color:#6b7280; margin-bottom:1rem;'>"
-                f"Baseado no seu interesse em <strong>{predominant_cat}</strong>"
-                f"</p>",
-                unsafe_allow_html=True,
-            )
-
-            cols = st.columns(len(recs))
-            for idx, (_, row) in enumerate(recs.iterrows()):
-                with cols[idx]:
-                    render_product_card(row, "rec", is_recommendation=True)
+            render_product_grid(recs, is_recommendation=True)
 
             with st.expander("📊 Ver dados técnicos das recomendações"):
                 st.dataframe(
@@ -454,15 +1228,21 @@ def main():
                     hide_index=True,
                 )
 
-    # Footer
-    st.markdown(
-        """
-        <div class="footer">
-            <p>🎓 Projeto acadêmico — Recomendador de Sessões com PyTorch + GRU</p>
-            <p>Deploy automático via Streamlit Cloud</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ======================================================================
+    # FOOTER
+    # ======================================================================
+    render_footer()
+
+    # ======================================================================
+    # SIDEBAR — Carrinho
+    # ======================================================================
+    render_cart_sidebar(catalogo)
+    st.sidebar.divider()
+    st.sidebar.caption(
+        f"⚙️ GRU com "
+        f"{sum(p.numel() for p in model.parameters() if p.requires_grad):,} parâmetros"
     )
 
 
