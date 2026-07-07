@@ -17,9 +17,23 @@ GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações na loja
 PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
 CAROUSEL_RECS = 12  # recomendações no carrossel do checkout
 
-# Ícones SVG inline (substituem emojis em elementos HTML)
-SVG_SEARCH = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>"""
-SVG_CART = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>"""
+# Ícones SVG carregados da pasta assets
+ASSETS_DIR = Path("assets")
+
+
+def load_svg(filename):
+    """Carrega um arquivo SVG como string HTML, pronto para injeção inline."""
+    path = ASSETS_DIR / filename
+    if path.exists():
+        return path.read_text()
+    return ""
+
+
+SVG_SEARCH = load_svg("search.svg")
+SVG_CART = load_svg("cart.svg")
+SVG_CHART = load_svg("chart-bar.svg")
+SVG_CLICK = load_svg("click.svg")
+# SVGs mantidos inline por não haver equivalente nos assets baixados
 SVG_STORE = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>"""
 SVG_CHECK = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>"""
 
@@ -1124,7 +1138,7 @@ def render_hero(has_items=False):
     else:
         st.html("""
             <div class="hero">
-                <h2 class="hero-title">Seu próximo produto está a um clique 🎯</h2>
+                <h2 class="hero-title">Seu próximo produto está a um clique {SVG_CLICK}</h2>
                 <p class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</p>
             </div>
         """)
@@ -1201,7 +1215,7 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
     else:
         render_product_grid(recs, "rec", is_recommendation=True)
 
-    with st.expander("Ver dados técnicos das recomendações"):
+    with st.expander(f"{SVG_CHART} Dados técnicos das recomendações"):
         st.dataframe(
             recs[["rank", "nome", "categoria", "preco", "score"]],
             width="stretch",
