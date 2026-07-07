@@ -6,7 +6,7 @@ Este é um projeto acadêmico de um **recomendador de próximo item baseado em s
 
 - **Repo GitHub:** https://github.com/marks3015/NIA-trabalhofinal
 - **Deploy alvo:** Streamlit Cloud
-- **Notebook de origem:** `recomendador_sessoes4.ipynb` (não incluso neste repo; gerado separadamente)
+- **Notebook de origem:** `recomendador_sessoes4.ipynb` (incluído neste repo desde o retreino v6 — gera o checkpoint e o catálogo commitados)
 
 ## Estrutura do projeto
 
@@ -16,6 +16,9 @@ recomendador-sessoes-app/
 ├── requirements.txt                    # Dependências Python
 ├── README.md                           # Documentação para humanos/usuários
 ├── AGENTS.md                           # Este arquivo
+├── RELATORIO_RETREINO_V5.md            # Relatório do retreino (v4 -> v6): metodologia, ablações, resultado
+├── recomendador_sessoes4.ipynb         # Notebook de treinamento (gera o checkpoint/catálogo abaixo)
+├── comparacao_metricas_v4_vs_v5.csv    # Métricas do modelo antigo vs. novo (dados brutos)
 ├── .gitignore                          # Arquivos ignorados pelo git
 ├── recomendador_checkpoint_v4.pt       # Checkpoint do modelo treinado (~1,1 MB)
 └── catalogo_v4.csv                     # Catálogo de 500 produtos mockup

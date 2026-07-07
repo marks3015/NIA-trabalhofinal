@@ -133,7 +133,7 @@ Escolhemos `ZIPF_EXPONENT=0.30`: bate a meta com folga confortável em ambas as 
 
 ## 7. Arquivos e commits
 
-- **Notebook atualizado:** `/Users/marks3015/Downloads/recomendador_sessoes4.ipynb` (não versionado neste repo — é o notebook de origem, separado do app).
+- **Notebook atualizado:** `recomendador_sessoes4.ipynb` (agora commitado neste repo, ao lado do checkpoint/catálogo que ele gera).
 - **Checkpoint novo:** `recomendador_checkpoint_v4.pt` (commitado, versão final com coerência de categoria + popularidade Zipf).
 - **Catálogo:** `catalogo_v4.csv` (regenerado, byte-idêntico ao anterior — só o comportamento de sessão mudou).
 - **Comparação de métricas (dados brutos, versão sem a mudança no gerador):** `comparacao_metricas_v4_vs_v5.csv`.
