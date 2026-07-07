@@ -1093,7 +1093,7 @@ def render_app_bar(cart_size):
     """App bar com marca (h1) e botão real do carrinho — em qualquer tela
     (inclusive mobile, onde a sidebar fica recolhida) ele leva ao checkout."""
     with st.container(key="app_bar", horizontal=True, vertical_alignment="center"):
-        st.html("""
+        st.html(f"""
             <div class="app-bar-brand">
                 <div class="app-bar-brand-icon" aria-hidden="true">{SVG_STORE}</div>
                 <div>
@@ -1233,7 +1233,7 @@ def render_cart_sidebar(catalogo):
 
     session = st.session_state.session
     if not session:
-        st.sidebar.html("""
+        st.sidebar.html(f"""
             <div class="cart-empty">
                 <div class="cart-empty-icon" aria-hidden="true">{SVG_CART}</div>
                 <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
@@ -1394,7 +1394,7 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
 
 def render_confirmation_view():
     """Tela de agradecimento exibida após a confirmação do pedido."""
-    st.html("""
+    st.html(f"""
         <div class="confirmation-box">
             <div class="confirmation-icon" aria-hidden="true">{SVG_CHECK}</div>
             <h2 class="confirmation-title">Pedido confirmado!</h2>
