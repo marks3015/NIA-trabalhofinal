@@ -237,8 +237,17 @@ CUSTOM_CSS = f"""
         box-shadow: var(--md-elevation-4);
     }}
 
+    /* O botão fica dentro do card com margens laterais iguais ao padding do
+       corpo. O wrapper ocupa a largura restante (100% - 2×0.875rem) e o
+       botão interno ocupa 100% desse wrapper — assim não estoura o card. */
     [class*="st-key-card_"] .stButton {{
         margin: 0 0.875rem;
+        width: calc(100% - 1.75rem) !important;
+        display: block;
+    }}
+
+    [class*="st-key-card_"] .stButton > button {{
+        width: 100% !important;
     }}
 
     .product-card-image-wrapper {{
@@ -447,12 +456,31 @@ CUSTOM_CSS = f"""
 
     .st-key-search_wrapper [data-testid="stTextInput"] {{
         flex: 1;
+        background: transparent !important;
+    }}
+
+    /* Remove o fundo cinza/lilás nativo do wrapper do Streamlit text_input */
+    .st-key-search_wrapper [data-testid="stTextInput"] > div {{
+        background: transparent !important;
     }}
 
     /* ===== Category Chips ===== */
     .st-key-chips_row {{
         flex-wrap: wrap !important;
+        justify-content: flex-start !important;
         margin-top: 0.5rem !important;
+        gap: 0.5rem !important;
+    }}
+
+    .st-key-chips_row [data-testid="stHorizontalBlock"] {{
+        justify-content: flex-start !important;
+        gap: 0.5rem !important;
+    }}
+
+    .st-key-chips_row [data-testid="stColumn"] {{
+        flex: 0 0 auto !important;
+        min-width: auto !important;
+        width: auto !important;
     }}
 
     .chip-label {{
@@ -746,6 +774,7 @@ CUSTOM_CSS = f"""
        (touch/trackpad) ou role para o lado para ver mais. */
     [class*="st-key-carousel_"] {{
         flex-wrap: nowrap !important;
+        align-items: stretch !important;
         overflow-x: auto;
         overflow-y: hidden;
         scroll-snap-type: x proximity;
@@ -758,19 +787,27 @@ CUSTOM_CSS = f"""
        de largura 100% — sem o override abaixo, cada card ganha um vão de
        ~720px. E o wrapper interno é flex de COLUNA, então um flex-basis no
        card viraria altura (cortando corpo e botão): a largura fixa precisa
-       vir de width/min/max, nunca de flex-basis. */
+       vir de width/min/max, nunca de flex-basis. O display:flex + stretch
+       fazem todos os cards da linha terem a mesma altura. */
     [class*="st-key-carousel_"] > [data-testid="stLayoutWrapper"],
     [class*="st-key-carousel_"] > div {{
         flex: 0 0 auto !important;
         width: auto !important;
+        display: flex;
+        align-items: stretch;
     }}
 
     [class*="st-key-carousel_"] [class*="st-key-card_"] {{
         width: 240px !important;
         min-width: 240px !important;
         max-width: 240px !important;
-        height: auto !important;
         scroll-snap-align: start;
+    }}
+
+    /* Empurra o botão para a base do card — em cards de mesma altura, os
+       CTAs ficam alinhados mesmo quando o título quebra em 2 linhas. */
+    [class*="st-key-carousel_"] [class*="st-key-card_"] > [data-testid="stElementContainer"]:last-child {{
+        margin-top: auto;
     }}
 
     /* ===== Helpers ===== */
