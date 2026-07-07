@@ -13,8 +13,9 @@ import torch.nn as nn
 # ---------------------------------------------------------------------------
 CHECKPOINT_PATH = Path("recomendador_checkpoint_v4.pt")
 CATALOG_PATH = Path("catalogo_v4.csv")
-GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações exibidas)
+GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações na loja)
 PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
+CAROUSEL_RECS = 12  # recomendações no carrossel do checkout
 
 st.set_page_config(
     page_title="Loja Mockup | Recomendador de Sessões",
@@ -739,6 +740,31 @@ CUSTOM_CSS = f"""
         .hero-title {{ font-size: 1.5rem; }}
     }}
 
+    /* ===== Carrossel de recomendações (checkout) =====
+       st.container(key="carousel_...", horizontal=True) com rolagem lateral
+       e scroll-snap: os cards têm largura fixa e não quebram linha — deslize
+       (touch/trackpad) ou role para o lado para ver mais. */
+    [class*="st-key-carousel_"] {{
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x proximity;
+        padding: 0.5rem 0.25rem 1rem 0.25rem;
+        scrollbar-width: thin;
+        scrollbar-color: var(--md-outline-variant) transparent;
+    }}
+
+    [class*="st-key-carousel_"] > div {{
+        flex: 0 0 auto;
+    }}
+
+    [class*="st-key-carousel_"] [class*="st-key-card_"] {{
+        flex: 0 0 240px !important;
+        width: 240px !important;
+        min-width: 240px !important;
+        scroll-snap-align: start;
+    }}
+
     /* ===== Helpers ===== */
     .stButton button {{ font-family: 'Inter', sans-serif !important; }}
     #MainMenu {{ visibility: hidden; }}
@@ -973,6 +999,14 @@ def render_product_grid(products, key_prefix, is_recommendation=False):
                     render_product_card(row, f"{key_prefix}_{start + offset}", is_recommendation)
 
 
+def render_product_carousel(products, key_prefix):
+    """Renderiza os cards em um carrossel horizontal: o container
+    key="carousel_..." recebe rolagem lateral com scroll-snap via CSS."""
+    with st.container(key=f"carousel_{key_prefix}", horizontal=True, gap="small"):
+        for idx, (_, row) in enumerate(products.iterrows()):
+            render_product_card(row, f"{key_prefix}_{idx}", is_recommendation=True)
+
+
 def render_skeleton_grid():
     """Skeleton loading enquanto o modelo carrega."""
     st.html("""
@@ -1069,20 +1103,25 @@ def render_search_section(categories):
     return search_term
 
 
-def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, item_price, heading):
-    """Bloco de recomendações do modelo — reaproveitado na loja e no checkout."""
+def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, item_price, heading,
+                           k=GRID_COLUMNS, carousel=False):
+    """Bloco de recomendações do modelo — grid de 4 na loja (k=GRID_COLUMNS,
+    fecha a linha no desktop) ou carrossel horizontal no checkout."""
     session_cats = catalogo[
         catalogo["item_id"].isin(st.session_state.session)
     ]["categoria"].tolist()
 
     st.html(f'<h2 class="section-title">{heading}</h2>')
+
+    subtitle = ""
     if session_cats:
         predominant_cat = max(set(session_cats), key=session_cats.count)
-        st.html(
-            f'<p class="section-subtitle">Baseado no seu interesse em <strong>{escape(predominant_cat)}</strong></p>'
-        )
+        subtitle = f"Baseado no seu interesse em <strong>{escape(predominant_cat)}</strong>"
+    if carousel:
+        subtitle += " · deslize para ver mais →" if subtitle else "Deslize para ver mais →"
+    if subtitle:
+        st.html(f'<p class="section-subtitle">{subtitle}</p>')
 
-    # k = GRID_COLUMNS para a linha de recomendações fechar exata no desktop
     recs = recommend(
         st.session_state.session,
         model,
@@ -1091,14 +1130,17 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
         idx_to_item,
         item_cat,
         item_price,
-        k=GRID_COLUMNS,
+        k=k,
     )
 
     if recs.empty:
         st.warning("Não foi possível gerar recomendações para essa sessão.")
         return
 
-    render_product_grid(recs, "rec", is_recommendation=True)
+    if carousel:
+        render_product_carousel(recs, "rec")
+    else:
+        render_product_grid(recs, "rec", is_recommendation=True)
 
     with st.expander("📊 Ver dados técnicos das recomendações"):
         st.dataframe(
@@ -1272,6 +1314,8 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
         render_recommendations(
             catalogo, model, item_to_idx, idx_to_item, item_cat, item_price,
             heading="✨ Que tal completar seu pedido?",
+            k=CAROUSEL_RECS,
+            carousel=True,
         )
 
     if st.button(

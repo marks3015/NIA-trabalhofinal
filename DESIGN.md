@@ -68,7 +68,8 @@ Escala mínima: **12px** apenas em labels/badges (equivalente ao Label Medium do
 
 ### Recommendation Card
 - Mesma estrutura do product card + badge de rank
-- **4 recomendações** (`k = GRID_COLUMNS`) para fechar a linha no desktop
+- **Loja:** grid de **4 recomendações** (`k = GRID_COLUMNS`) para fechar a linha no desktop
+- **Checkout:** carrossel horizontal com **12 recomendações** (`CAROUSEL_RECS`) — `st.container(horizontal=True)` com `flex-wrap: nowrap`, `overflow-x: auto` e scroll-snap; cards de 240px de largura fixa; funciona com swipe (touch), trackpad e scroll lateral, com dica "deslize para ver mais →" no subtítulo
 - Score bruto do modelo aparece apenas no expander "dados técnicos", não no card
 - Seção com fundo gradiente idêntico na loja (`rec_section`) e no checkout (`checkout_rec_section`)
 
