@@ -17,6 +17,12 @@ GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações na loja
 PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
 CAROUSEL_RECS = 12  # recomendações no carrossel do checkout
 
+# Ícones SVG inline (substituem emojis em elementos HTML)
+SVG_SEARCH = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>"""
+SVG_CART = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>"""
+SVG_STORE = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>"""
+SVG_CHECK = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>"""
+
 st.set_page_config(
     page_title="Loja Mockup | Recomendador de Sessões",
     page_icon="🛍️",
@@ -1018,7 +1024,7 @@ def render_product_card(row, key_prefix, is_recommendation=False):
             )
         else:
             clicked = st.button(
-                "🛒 Adicionar ao carrinho",
+                "Adicionar ao carrinho",
                 key=f"{key_prefix}_{item_id}",
                 width="stretch",
                 type="primary" if is_recommendation else "secondary",
@@ -1028,7 +1034,7 @@ def render_product_card(row, key_prefix, is_recommendation=False):
     if clicked:
         st.session_state.undo_snapshot = None
         st.session_state.session.append(item_id)
-        st.toast(f"✅ {row['nome']} adicionado ao carrinho!")
+        st.toast(f"{row['nome']} adicionado ao carrinho!")
         st.rerun()
 
 
@@ -1076,7 +1082,7 @@ def render_empty_state(title, message):
     """Empty state amigável (title/message podem conter HTML já escapado)."""
     st.html(f"""
         <div class="empty-state">
-            <div class="empty-state-icon" aria-hidden="true">🔍</div>
+            <div class="empty-state-icon" aria-hidden="true">{SVG_SEARCH}</div>
             <h3 class="empty-state-title">{title}</h3>
             <p class="empty-state-text">{message}</p>
         </div>
@@ -1089,7 +1095,7 @@ def render_app_bar(cart_size):
     with st.container(key="app_bar", horizontal=True, vertical_alignment="center"):
         st.html("""
             <div class="app-bar-brand">
-                <div class="app-bar-brand-icon" aria-hidden="true">🛍️</div>
+                <div class="app-bar-brand-icon" aria-hidden="true">{SVG_STORE}</div>
                 <div>
                     <h1 class="app-bar-brand-text">Loja Mockup</h1>
                     <p class="app-bar-brand-sub">Recomendador Inteligente</p>
@@ -1097,12 +1103,12 @@ def render_app_bar(cart_size):
             </div>
         """, width="content")
 
-        label = f"🛒 {cart_size}" if cart_size > 0 else "🛒"
+        label = f"Carrinho ({cart_size})" if cart_size > 0 else "Carrinho"
         if st.button(label, key="cart_button", help="Abrir o carrinho e finalizar a compra"):
             if cart_size > 0:
                 st.session_state.view = "checkout"
             else:
-                st.toast("🛒 Seu carrinho ainda está vazio.")
+                st.toast("Seu carrinho ainda está vazio.")
             st.rerun()
 
 
@@ -1136,7 +1142,7 @@ def render_search_section(categories):
     evitando o aviso do Streamlit sobre default + Session State.
     """
     with st.container(key="search_wrapper", horizontal=True, vertical_alignment="center", gap="small"):
-        st.html('<span class="search-icon" aria-hidden="true">🔍</span>', width="content")
+        st.html(f'<span class="search-icon" aria-hidden="true">{SVG_SEARCH}</span>', width="content")
         search_term = st.text_input(
             "Buscar produtos",
             placeholder="Buscar produtos pelo nome...",
@@ -1195,7 +1201,7 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
     else:
         render_product_grid(recs, "rec", is_recommendation=True)
 
-    with st.expander("📊 Ver dados técnicos das recomendações"):
+    with st.expander("Ver dados técnicos das recomendações"):
         st.dataframe(
             recs[["rank", "nome", "categoria", "preco", "score"]],
             width="stretch",
@@ -1217,19 +1223,19 @@ def _render_undo_button():
     ):
         st.session_state.session = undo["session"]
         st.session_state.undo_snapshot = None
-        st.toast("↩️ Itens restaurados no carrinho.")
+        st.toast("Itens restaurados no carrinho.")
         st.rerun()
 
 
 def render_cart_sidebar(catalogo):
     """Sidebar do carrinho com itens, total e ações."""
-    st.sidebar.html('<h2 class="cart-title">🛒 Carrinho</h2>')
+    st.sidebar.html(f'<h2 class="cart-title">{SVG_CART} Carrinho</h2>')
 
     session = st.session_state.session
     if not session:
         st.sidebar.html("""
             <div class="cart-empty">
-                <div class="cart-empty-icon" aria-hidden="true">🛒</div>
+                <div class="cart-empty-icon" aria-hidden="true">{SVG_CART}</div>
                 <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
             </div>
         """)
@@ -1257,7 +1263,7 @@ def render_cart_sidebar(catalogo):
                 "label": "remoção",
             }
             st.session_state.session = [i for i in st.session_state.session if i != item_id]
-            st.toast(f"🗑️ {prod['nome']} removido do carrinho.")
+            st.toast(f"{prod['nome']} removido do carrinho.")
             st.rerun()
 
     st.sidebar.html(f"""
@@ -1291,7 +1297,7 @@ def render_cart_sidebar(catalogo):
             }
             st.session_state.session = []
             st.session_state.confirm_clear = False
-            st.toast("🗑️ Carrinho esvaziado.")
+            st.toast("Carrinho esvaziado.")
             st.rerun()
         if col_no.button("Cancelar", key="clear_no", width="stretch"):
             st.session_state.confirm_clear = False
@@ -1382,7 +1388,7 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
         st.session_state.undo_snapshot = None
         st.session_state.confirm_clear = False
         st.session_state.view = "confirmed"
-        st.toast("🎉 Pedido confirmado!")
+        st.toast("Pedido confirmado!")
         st.rerun()
 
 
@@ -1390,7 +1396,7 @@ def render_confirmation_view():
     """Tela de agradecimento exibida após a confirmação do pedido."""
     st.html("""
         <div class="confirmation-box">
-            <div class="confirmation-icon" aria-hidden="true">🎉</div>
+            <div class="confirmation-icon" aria-hidden="true">{SVG_CHECK}</div>
             <h2 class="confirmation-title">Pedido confirmado!</h2>
             <p class="confirmation-text">
                 Obrigado pela compra. Este é um checkout de demonstração —
@@ -1409,7 +1415,7 @@ def render_confirmation_view():
             </div>
         """)
 
-    if st.button("🛍️ Continuar comprando", type="primary", width="stretch"):
+    if st.button("Continuar comprando", type="primary", width="stretch"):
         st.session_state.view = "shop"
         st.rerun()
 
