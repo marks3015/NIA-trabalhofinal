@@ -754,14 +754,22 @@ CUSTOM_CSS = f"""
         scrollbar-color: var(--md-outline-variant) transparent;
     }}
 
+    /* O Streamlit envolve cada filho do bloco horizontal num stLayoutWrapper
+       de largura 100% — sem o override abaixo, cada card ganha um vão de
+       ~720px. E o wrapper interno é flex de COLUNA, então um flex-basis no
+       card viraria altura (cortando corpo e botão): a largura fixa precisa
+       vir de width/min/max, nunca de flex-basis. */
+    [class*="st-key-carousel_"] > [data-testid="stLayoutWrapper"],
     [class*="st-key-carousel_"] > div {{
-        flex: 0 0 auto;
+        flex: 0 0 auto !important;
+        width: auto !important;
     }}
 
     [class*="st-key-carousel_"] [class*="st-key-card_"] {{
-        flex: 0 0 240px !important;
         width: 240px !important;
         min-width: 240px !important;
+        max-width: 240px !important;
+        height: auto !important;
         scroll-snap-align: start;
     }}
 
@@ -929,7 +937,9 @@ def build_card_html(row, is_recommendation=False):
 
     nome = escape(str(row["nome"]))
     categoria = escape(str(row["categoria"]))
-    imagem_url = escape(str(row["imagem_url"]))
+    # via.placeholder.com (usado no catálogo) saiu do ar; placehold.co serve
+    # os mesmos placeholders com a mesma sintaxe de URL.
+    imagem_url = escape(str(row["imagem_url"]).replace("via.placeholder.com", "placehold.co"))
 
     return f"""
     {rank_badge}
