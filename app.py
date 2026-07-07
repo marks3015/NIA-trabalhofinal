@@ -1023,7 +1023,7 @@ def render_search_section(search_term, selected_category, categories):
     separados), então o CSS do "pill" de busca nunca chegava a se aplicar.
     """
     with st.container(key="search_wrapper", horizontal=True, vertical_alignment="center", gap="small"):
-        st.html('<span class="search-icon">🔍</span>')
+        st.html('<span class="search-icon">🔍</span>', width="content")
         search_term = st.text_input(
             "Buscar produtos",
             value=search_term,
