@@ -11,14 +11,15 @@ import torch.nn as nn
 # ---------------------------------------------------------------------------
 # Configurações
 # ---------------------------------------------------------------------------
-CHECKPOINT_PATH = Path("recomendador_checkpoint_v4.pt")
-CATALOG_PATH = Path("catalogo_v4.csv")
+BASE_DIR = Path(__file__).parent
+CHECKPOINT_PATH = BASE_DIR / "recomendador_checkpoint_v4.pt"
+CATALOG_PATH = BASE_DIR / "catalogo_v4.csv"
 GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações na loja)
 PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
 CAROUSEL_RECS = 12  # recomendações no carrossel do checkout
 
 # Ícones SVG carregados da pasta assets
-ASSETS_DIR = Path("assets")
+ASSETS_DIR = BASE_DIR / "assets"
 
 
 def load_svg(filename):
@@ -1136,7 +1137,7 @@ def render_hero(has_items=False):
             </div>
         """)
     else:
-        st.html("""
+        st.html(f"""
             <div class="hero">
                 <h2 class="hero-title">Seu próximo produto está a um clique {SVG_CLICK}</h2>
                 <p class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</p>
