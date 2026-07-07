@@ -1,4 +1,5 @@
 import random
+from html import escape
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,8 @@ import torch.nn as nn
 # ---------------------------------------------------------------------------
 CHECKPOINT_PATH = Path("recomendador_checkpoint_v4.pt")
 CATALOG_PATH = Path("catalogo_v4.csv")
+GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações exibidas)
+PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
 
 st.set_page_config(
     page_title="Loja Mockup | Recomendador de Sessões",
@@ -42,6 +45,8 @@ ON_SURFACE_VARIANT = "#49454F"
 OUTLINE = "#79747E"
 OUTLINE_VARIANT = "#CAC4D0"
 SHADOW = "#000000"
+PRIMARY_HOVER = "#7B62B4"  # primary + state layer de hover (MD3)
+SHIMMER_HIGHLIGHT = "#F5F0F8"  # brilho do shimmer do skeleton
 
 # ---------------------------------------------------------------------------
 # CSS customizado — MD3 completo
@@ -69,6 +74,8 @@ CUSTOM_CSS = f"""
         --md-outline: {OUTLINE};
         --md-outline-variant: {OUTLINE_VARIANT};
         --md-shadow: {SHADOW};
+        --md-primary-hover: {PRIMARY_HOVER};
+        --md-shimmer-highlight: {SHIMMER_HIGHLIGHT};
         --md-shape-xs: 4px;
         --md-shape-sm: 8px;
         --md-shape-md: 12px;
@@ -95,10 +102,16 @@ CUSTOM_CSS = f"""
     }}
 
     /* ===== Top App Bar ===== */
-    .app-bar {{
-        display: flex;
+    /* .st-key-app_bar é um st.container(horizontal=True) real: a marca e o
+       botão do carrinho são filhos do mesmo flex row. */
+    .st-key-app_bar,
+    .st-key-app_bar [data-testid="stHorizontalBlock"] {{
         align-items: center;
         justify-content: space-between;
+        width: 100%;
+    }}
+
+    .st-key-app_bar {{
         padding: 0.75rem 0;
         margin-bottom: 1.5rem;
         border-bottom: 1px solid var(--md-outline-variant);
@@ -133,61 +146,19 @@ CUSTOM_CSS = f"""
     }}
 
     .app-bar-brand-sub {{
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         color: var(--md-on-surface-variant);
         margin: 0;
         font-weight: 400;
     }}
 
-    .app-bar-actions {{
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }}
-
-    /* ===== Cart Badge ===== */
-    .cart-badge-btn {{
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--md-surface-variant);
-        border: none;
-        cursor: default;
-        font-size: 1.25rem;
-        transition: background 0.2s;
-    }}
-
-    .cart-badge-count {{
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        background: var(--md-primary);
-        color: white;
-        font-size: 0.6875rem;
-        font-weight: 600;
-        min-width: 18px;
-        height: 18px;
-        border-radius: 9px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0 4px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        transition: transform 0.2s ease;
-    }}
-
-    .cart-badge-count.pop {{
-        animation: badgePop 0.35s ease;
-    }}
-
-    @keyframes badgePop {{
-        0% {{ transform: scale(1); }}
-        40% {{ transform: scale(1.35); }}
-        100% {{ transform: scale(1); }}
+    /* ===== Botão do carrinho (app bar) ===== */
+    .st-key-cart_button button {{
+        width: auto !important;
+        min-width: 48px;
+        min-height: 40px;
+        padding: 0.5rem 1rem !important;
+        font-size: 1rem !important;
     }}
 
     /* ===== Hero ===== */
@@ -214,6 +185,14 @@ CUSTOM_CSS = f"""
         max-width: 520px;
     }}
 
+    .hero-compact {{
+        padding: 1.5rem 2rem;
+    }}
+
+    .hero-compact .hero-title {{
+        font-size: 1.375rem;
+    }}
+
     /* ===== Section ===== */
     .section-title {{
         font-size: 1.5rem;
@@ -229,21 +208,36 @@ CUSTOM_CSS = f"""
         margin: 0 0 1rem 0;
     }}
 
-    /* ===== Product Card ===== */
-    .product-card {{
+    /* ===== Cards de produto/recomendação =====
+       O chrome do card (fundo, sombra, hover) fica no st.container real
+       (key="card_product_..." / key="card_rec_...") que envolve o HTML e o
+       botão nativo — assim o CTA fica dentro do card, sob a mesma elevação. */
+    [class*="st-key-card_"] {{
+        position: relative;
         background: var(--md-surface);
         border-radius: var(--md-shape-md);
         box-shadow: var(--md-elevation-1);
         overflow: hidden;
+        padding-bottom: 0.875rem;
+        gap: 0.5rem;
         transition: box-shadow 0.25s ease, transform 0.25s ease;
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 0.35rem;
     }}
 
-    .product-card:hover {{
+    [class*="st-key-card_"]:hover {{
         box-shadow: var(--md-elevation-3);
         transform: translateY(-3px);
+    }}
+
+    [class*="st-key-card_rec"] {{
+        box-shadow: var(--md-elevation-2);
+    }}
+
+    [class*="st-key-card_rec"]:hover {{
+        box-shadow: var(--md-elevation-4);
+    }}
+
+    [class*="st-key-card_"] .stButton {{
+        margin: 0 0.875rem;
     }}
 
     .product-card-image-wrapper {{
@@ -262,15 +256,14 @@ CUSTOM_CSS = f"""
         display: block;
     }}
 
-    .product-card:hover .product-card-image {{
+    [class*="st-key-card_"]:hover .product-card-image {{
         transform: scale(1.06);
     }}
 
     .product-card-body {{
-        padding: 0.875rem;
+        padding: 0 0.875rem;
         display: flex;
         flex-direction: column;
-        flex: 1;
     }}
 
     .product-card-category {{
@@ -279,7 +272,7 @@ CUSTOM_CSS = f"""
         color: var(--md-on-secondary-container);
         padding: 0.15rem 0.55rem;
         border-radius: var(--md-shape-xs);
-        font-size: 0.6875rem;
+        font-size: 0.75rem;
         font-weight: 600;
         align-self: flex-start;
         margin-bottom: 0.4rem;
@@ -301,7 +294,7 @@ CUSTOM_CSS = f"""
         font-size: 1.25rem;
         font-weight: 700;
         color: var(--md-primary);
-        margin: auto 0 0.4rem 0;
+        margin: 0.2rem 0 0 0;
     }}
 
     /* ===== Botões — MD3 mapeado nos 3 kinds nativos do Streamlit =====
@@ -311,8 +304,9 @@ CUSTOM_CSS = f"""
         width: 100%;
         padding: 0.55rem 0.875rem !important;
         border-radius: var(--md-shape-xl) !important;
-        font-size: 0.8125rem !important;
+        font-size: 0.875rem !important;
         font-weight: 600 !important;
+        min-height: 40px;
         transition: all 0.2s ease !important;
     }}
 
@@ -335,7 +329,7 @@ CUSTOM_CSS = f"""
     }}
 
     [data-testid="stBaseButton-primary"]:hover {{
-        background: #7b62b4 !important;
+        background: var(--md-primary-hover) !important;
         box-shadow: var(--md-elevation-2);
     }}
 
@@ -344,15 +338,22 @@ CUSTOM_CSS = f"""
         background: transparent !important;
         color: var(--md-on-surface-variant) !important;
         border-radius: 50% !important;
-        width: 32px !important;
-        min-width: 32px !important;
-        height: 32px !important;
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px !important;
         padding: 0 !important;
     }}
 
     [data-testid="stBaseButton-tertiary"]:hover {{
         background: var(--md-error-container) !important;
         color: var(--md-error) !important;
+    }}
+
+    /* Confirmação destrutiva (limpar carrinho) usa a cor de erro do MD3 */
+    .st-key-clear_yes button {{
+        background: var(--md-error) !important;
+        border-color: var(--md-error) !important;
+        color: white !important;
     }}
 
     [data-testid="stButton"] button:focus-visible {{
@@ -370,42 +371,29 @@ CUSTOM_CSS = f"""
     }}
 
     /* ===== Recommendation Section ===== */
-    /* .st-key-rec_section é o st.container(key="rec_section") real que
-       envolve o título, o grid e o expander (ver render em main()). */
-    .st-key-rec_section {{
+    /* .st-key-rec_section (loja) e .st-key-checkout_rec_section (checkout)
+       são st.container(key=...) reais que envolvem título, grid e expander —
+       o mesmo destaque em degradê nas duas telas. */
+    .st-key-rec_section,
+    .st-key-checkout_rec_section {{
         background: linear-gradient(135deg, var(--md-primary-container) 0%, var(--md-secondary-container) 100%);
         border-radius: var(--md-shape-lg);
         padding: 1.75rem;
         margin: 2rem 0;
     }}
 
-    .st-key-rec_section .section-title {{
+    .st-key-rec_section .section-title,
+    .st-key-checkout_rec_section .section-title {{
         color: var(--md-on-primary-container);
         margin-top: 0;
     }}
 
-    .st-key-rec_section .section-subtitle {{
+    .st-key-rec_section .section-subtitle,
+    .st-key-checkout_rec_section .section-subtitle {{
         color: var(--md-on-surface-variant);
     }}
 
     /* ===== Recommendation Card ===== */
-    .rec-card {{
-        position: relative;
-        background: var(--md-surface);
-        border-radius: var(--md-shape-md);
-        box-shadow: var(--md-elevation-2);
-        overflow: hidden;
-        transition: box-shadow 0.25s ease, transform 0.25s ease;
-        display: flex;
-        flex-direction: column;
-        margin-bottom: 0.35rem;
-    }}
-
-    .rec-card:hover {{
-        box-shadow: var(--md-elevation-4);
-        transform: translateY(-3px);
-    }}
-
     .rec-card-badge {{
         position: absolute;
         top: 8px;
@@ -414,16 +402,10 @@ CUSTOM_CSS = f"""
         color: white;
         padding: 0.15rem 0.5rem;
         border-radius: var(--md-shape-xs);
-        font-size: 0.6875rem;
+        font-size: 0.75rem;
         font-weight: 600;
         z-index: 2;
         line-height: 1.4;
-    }}
-
-    .score-badge {{
-        font-size: 0.6875rem;
-        color: var(--md-on-surface-variant);
-        margin-bottom: 0.4rem;
     }}
 
     /* ===== Search + Filters ===== */
@@ -473,7 +455,7 @@ CUSTOM_CSS = f"""
     }}
 
     .chip-label {{
-        font-size: 0.8125rem;
+        font-size: 0.875rem;
         color: var(--md-on-surface-variant);
         white-space: nowrap;
     }}
@@ -488,7 +470,7 @@ CUSTOM_CSS = f"""
     /* ===== Cart Sidebar ===== */
     [data-testid="stSidebar"] {{
         background: var(--md-surface);
-        border-left: 1px solid var(--md-outline-variant);
+        border-right: 1px solid var(--md-outline-variant);
     }}
 
     [data-testid="stSidebar"] > div:first-child {{
@@ -520,7 +502,7 @@ CUSTOM_CSS = f"""
     }}
 
     .cart-item-detail {{
-        font-size: 0.75rem;
+        font-size: 0.8125rem;
         color: var(--md-on-surface-variant);
         margin: 0;
     }}
@@ -541,8 +523,7 @@ CUSTOM_CSS = f"""
     }}
 
     .cart-total-label {{
-        font-size: 0.75rem;
-        opacity: 0.85;
+        font-size: 0.875rem;
     }}
 
     .cart-total-value {{
@@ -613,7 +594,6 @@ CUSTOM_CSS = f"""
 
     .checkout-total-label {{
         font-size: 0.875rem;
-        opacity: 0.85;
     }}
 
     .checkout-total-value {{
@@ -673,7 +653,7 @@ CUSTOM_CSS = f"""
     /* ===== Skeleton ===== */
     .skeleton-grid {{
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        grid-template-columns: repeat(4, 1fr);
         gap: 1rem;
         margin-bottom: 1rem;
     }}
@@ -688,7 +668,7 @@ CUSTOM_CSS = f"""
     .skeleton-image {{
         width: 100%;
         aspect-ratio: 1;
-        background: linear-gradient(90deg, var(--md-surface-variant) 25%, #f5f0f8 50%, var(--md-surface-variant) 75%);
+        background: linear-gradient(90deg, var(--md-surface-variant) 25%, var(--md-shimmer-highlight) 50%, var(--md-surface-variant) 75%);
         background-size: 200% 100%;
         animation: shimmer 1.5s ease-in-out infinite;
     }}
@@ -701,7 +681,7 @@ CUSTOM_CSS = f"""
         height: 12px;
         margin-bottom: 8px;
         border-radius: var(--md-shape-xs);
-        background: linear-gradient(90deg, var(--md-surface-variant) 25%, #f5f0f8 50%, var(--md-surface-variant) 75%);
+        background: linear-gradient(90deg, var(--md-surface-variant) 25%, var(--md-shimmer-highlight) 50%, var(--md-surface-variant) 75%);
         background-size: 200% 100%;
         animation: shimmer 1.5s ease-in-out infinite;
     }}
@@ -726,6 +706,37 @@ CUSTOM_CSS = f"""
 
     .footer strong {{
         color: var(--md-primary);
+    }}
+
+    /* ===== Grid responsivo (4 → 2 → 1) =====
+       Sobrescreve as colunas nativas do Streamlit dentro dos grids de cards
+       (st.container(key="grid_...")) com breakpoints reais; as linhas de 4
+       cards quebram de forma uniforme (2+2 e depois 1 por linha). O skeleton
+       usa os mesmos breakpoints para não "saltar" quando o conteúdo chega. */
+    [class*="st-key-grid_"] [data-testid="stHorizontalBlock"] {{
+        flex-wrap: wrap;
+        row-gap: 1rem;
+    }}
+
+    @media (max-width: 1100px) {{
+        [class*="st-key-grid_"] [data-testid="stColumn"] {{
+            flex: 1 1 calc(50% - 1rem) !important;
+            min-width: calc(50% - 1rem) !important;
+        }}
+        .skeleton-grid {{ grid-template-columns: repeat(2, 1fr); }}
+    }}
+
+    @media (max-width: 700px) {{
+        .hero {{ padding: 1.75rem 1.5rem; }}
+    }}
+
+    @media (max-width: 480px) {{
+        [class*="st-key-grid_"] [data-testid="stColumn"] {{
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }}
+        .skeleton-grid {{ grid-template-columns: 1fr; }}
+        .hero-title {{ font-size: 1.5rem; }}
     }}
 
     /* ===== Helpers ===== */
@@ -876,67 +887,76 @@ def recommend(session_items, model, catalogo, item_to_idx, idx_to_item, item_cat
 # ---------------------------------------------------------------------------
 # Componentes de UI
 # ---------------------------------------------------------------------------
+def fmt_brl(value):
+    """Formata um valor em reais no padrão brasileiro (R$ 1.234,56)."""
+    return "R$ " + f"{value:,.2f}".replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
 def build_card_html(row, is_recommendation=False):
-    """Gera HTML visual de um card MD3 (sem botão interativo)."""
+    """Gera o conteúdo HTML de um card MD3 (imagem + infos); o chrome do
+    card — fundo, sombra, hover — vem do st.container que o envolve em
+    render_product_card()."""
     rank_badge = ""
     if is_recommendation:
         rank = row.get("rank", "")
         rank_badge = f'<div class="rec-card-badge">#{rank}</div>' if rank else ""
 
-    score_html = ""
-    if is_recommendation and "score" in row:
-        score_html = f'<div class="score-badge">Score: {row["score"]:.4f}</div>'
-
-    card_class = "rec-card" if is_recommendation else "product-card"
+    nome = escape(str(row["nome"]))
+    categoria = escape(str(row["categoria"]))
+    imagem_url = escape(str(row["imagem_url"]))
 
     return f"""
-    <div class="{card_class}">
-        {rank_badge}
-        <div class="product-card-image-wrapper">
-            <img src="{row['imagem_url']}" class="product-card-image" alt="{row['nome']}" loading="lazy">
-        </div>
-        <div class="product-card-body">
-            <span class="product-card-category">{row['categoria']}</span>
-            <h3 class="product-card-name">{row['nome']}</h3>
-            <p class="product-card-price">R$ {row['preco']:.2f}</p>
-            {score_html}
-        </div>
+    {rank_badge}
+    <div class="product-card-image-wrapper">
+        <img src="{imagem_url}" class="product-card-image" alt="{nome}" loading="lazy">
+    </div>
+    <div class="product-card-body">
+        <span class="product-card-category">{categoria}</span>
+        <h3 class="product-card-name">{nome}</h3>
+        <p class="product-card-price">{fmt_brl(row['preco'])}</p>
     </div>
     """
 
 
 def render_product_card(row, key_prefix, is_recommendation=False):
-    """Renderiza card visual + botão Streamlit nativo para adicionar."""
-    st.html(build_card_html(row, is_recommendation))
-
+    """Renderiza um card completo: o st.container(key="card_...") recebe o
+    chrome MD3 via CSS e envolve o HTML e o botão nativo, para que o CTA
+    faça parte do card (mesma sombra e hover)."""
     item_id = int(row["item_id"])
-    already_in_cart = item_id in st.session_state.session
+    card_kind = "rec" if is_recommendation else "product"
+    clicked = False
 
-    if already_in_cart:
-        st.button(
-            "✓ No carrinho",
-            key=f"{key_prefix}_{item_id}",
-            width="stretch",
-            disabled=True,
-            help="Este item já está no seu carrinho",
-        )
-        return
+    with st.container(key=f"card_{card_kind}_{key_prefix}"):
+        st.html(build_card_html(row, is_recommendation))
 
-    clicked = st.button(
-        "🛒 Adicionar ao carrinho",
-        key=f"{key_prefix}_{item_id}",
-        width="stretch",
-        type="primary" if is_recommendation else "secondary",
-        help="Adicionar este item ao carrinho",
-    )
+        if item_id in st.session_state.session:
+            st.button(
+                "✓ No carrinho",
+                key=f"{key_prefix}_{item_id}",
+                width="stretch",
+                disabled=True,
+                help="Este item já está no seu carrinho (máx. 1 unidade nesta demo)",
+            )
+        else:
+            clicked = st.button(
+                "🛒 Adicionar ao carrinho",
+                key=f"{key_prefix}_{item_id}",
+                width="stretch",
+                type="primary" if is_recommendation else "secondary",
+                help="Adicionar este item ao carrinho",
+            )
+
     if clicked:
+        st.session_state.undo_snapshot = None
         st.session_state.session.append(item_id)
         st.toast(f"✅ {row['nome']} adicionado ao carrinho!")
         st.rerun()
 
 
 def render_product_grid(products, key_prefix, is_recommendation=False):
-    """Renderiza grid de cards com botões nativos do Streamlit."""
+    """Renderiza grid de cards em ordem de leitura (linha a linha): cada
+    linha é um st.columns(GRID_COLUMNS) e o container key="grid_..." ativa
+    os breakpoints responsivos (4 → 2 → 1 colunas) do CSS."""
     if products.empty:
         render_empty_state(
             "Nenhum produto encontrado",
@@ -944,10 +964,13 @@ def render_product_grid(products, key_prefix, is_recommendation=False):
         )
         return
 
-    cols = st.columns(4)
-    for idx, (_, row) in enumerate(products.iterrows()):
-        with cols[idx % 4]:
-            render_product_card(row, f"{key_prefix}_{idx}", is_recommendation)
+    with st.container(key=f"grid_{key_prefix}"):
+        for start in range(0, len(products), GRID_COLUMNS):
+            chunk = products.iloc[start:start + GRID_COLUMNS]
+            cols = st.columns(GRID_COLUMNS)
+            for offset, (_, row) in enumerate(chunk.iterrows()):
+                with cols[offset]:
+                    render_product_card(row, f"{key_prefix}_{start + offset}", is_recommendation)
 
 
 def render_skeleton_grid():
@@ -963,70 +986,72 @@ def render_skeleton_grid():
 
 
 def render_empty_state(title, message):
-    """Empty state amigável."""
+    """Empty state amigável (title/message podem conter HTML já escapado)."""
     st.html(f"""
         <div class="empty-state">
-            <div class="empty-state-icon">🔍</div>
-            <div class="empty-state-title">{title}</div>
-            <div class="empty-state-text">{message}</div>
+            <div class="empty-state-icon" aria-hidden="true">🔍</div>
+            <h3 class="empty-state-title">{title}</h3>
+            <p class="empty-state-text">{message}</p>
         </div>
     """)
 
 
-def render_app_bar(cart_size, animate_badge=False):
-    """App bar com marca e badge do carrinho."""
-    badge_class = "cart-badge-count" + (" pop" if animate_badge else "")
-    badge_html = f'<span class="{badge_class}">{cart_size}</span>' if cart_size > 0 else ""
-
-    st.html(f"""
-        <div class="app-bar">
+def render_app_bar(cart_size):
+    """App bar com marca (h1) e botão real do carrinho — em qualquer tela
+    (inclusive mobile, onde a sidebar fica recolhida) ele leva ao checkout."""
+    with st.container(key="app_bar", horizontal=True, vertical_alignment="center"):
+        st.html("""
             <div class="app-bar-brand">
-                <div class="app-bar-brand-icon">🛍️</div>
+                <div class="app-bar-brand-icon" aria-hidden="true">🛍️</div>
                 <div>
-                    <div class="app-bar-brand-text">Loja Mockup</div>
-                    <div class="app-bar-brand-sub">Recomendador Inteligente</div>
+                    <h1 class="app-bar-brand-text">Loja Mockup</h1>
+                    <p class="app-bar-brand-sub">Recomendador Inteligente</p>
                 </div>
             </div>
-            <div class="app-bar-actions">
-                <div class="cart-badge-btn">
-                    🛒{badge_html}
-                </div>
-            </div>
-        </div>
-    """)
+        """, width="content")
+
+        label = f"🛒 {cart_size}" if cart_size > 0 else "🛒"
+        if st.button(label, key="cart_button", help="Abrir o carrinho e finalizar a compra"):
+            if cart_size > 0:
+                st.session_state.view = "checkout"
+            else:
+                st.toast("🛒 Seu carrinho ainda está vazio.")
+            st.rerun()
 
 
 def render_hero(has_items=False):
     """Hero banner com CTA contextual."""
     if has_items:
-        st.html(f"""
-            <div class="hero" style="padding:1.5rem 2rem;">
-                <div class="hero-title" style="font-size:1.375rem;">Continue explorando 🚀</div>
-                <div class="hero-subtitle">Adicione mais produtos ao carrinho para recomendações ainda melhores.</div>
+        st.html("""
+            <div class="hero hero-compact">
+                <h2 class="hero-title">Continue explorando 🚀</h2>
+                <p class="hero-subtitle">Adicione mais produtos ao carrinho para recomendações ainda melhores.</p>
             </div>
         """)
     else:
-        st.html(f"""
+        st.html("""
             <div class="hero">
-                <div class="hero-title">Seu próximo produto está a um clique 🎯</div>
-                <div class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</div>
+                <h2 class="hero-title">Seu próximo produto está a um clique 🎯</h2>
+                <p class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</p>
             </div>
         """)
 
 
-def render_search_section(search_term, selected_category, categories):
+def render_search_section(categories):
     """Busca + chips de categoria com botões nativos.
 
     A busca usa um único ``st.container(key=...)`` para agrupar de fato o
     ícone e o campo de texto no mesmo elemento do DOM — antes eles eram
     renderizados como blocos irmãos (um ``st.markdown`` e um ``st.text_input``
     separados), então o CSS do "pill" de busca nunca chegava a se aplicar.
+
+    O valor do campo vive só em st.session_state.search_input (sem ``value=``),
+    evitando o aviso do Streamlit sobre default + Session State.
     """
     with st.container(key="search_wrapper", horizontal=True, vertical_alignment="center", gap="small"):
-        st.html('<span class="search-icon">🔍</span>', width="content")
+        st.html('<span class="search-icon" aria-hidden="true">🔍</span>', width="content")
         search_term = st.text_input(
             "Buscar produtos",
-            value=search_term,
             placeholder="Buscar produtos pelo nome...",
             label_visibility="collapsed",
             key="search_input",
@@ -1050,13 +1075,14 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
         catalogo["item_id"].isin(st.session_state.session)
     ]["categoria"].tolist()
 
-    st.html(f'<div class="section-title">{heading}</div>')
+    st.html(f'<h2 class="section-title">{heading}</h2>')
     if session_cats:
         predominant_cat = max(set(session_cats), key=session_cats.count)
         st.html(
-            f'<div class="section-subtitle">Baseado no seu interesse em <strong>{predominant_cat}</strong></div>'
+            f'<p class="section-subtitle">Baseado no seu interesse em <strong>{escape(predominant_cat)}</strong></p>'
         )
 
+    # k = GRID_COLUMNS para a linha de recomendações fechar exata no desktop
     recs = recommend(
         st.session_state.session,
         model,
@@ -1065,7 +1091,7 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
         idx_to_item,
         item_cat,
         item_price,
-        k=5,
+        k=GRID_COLUMNS,
     )
 
     if recs.empty:
@@ -1082,18 +1108,37 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
         )
 
 
+def _render_undo_button():
+    """Botão de desfazer a última remoção/limpeza do carrinho."""
+    undo = st.session_state.get("undo_snapshot")
+    if not undo:
+        return
+    if st.sidebar.button(
+        f"↩️ Desfazer {undo['label']}",
+        key="undo_cart",
+        width="stretch",
+        type="secondary",
+        help="Restaurar os itens removidos do carrinho",
+    ):
+        st.session_state.session = undo["session"]
+        st.session_state.undo_snapshot = None
+        st.toast("↩️ Itens restaurados no carrinho.")
+        st.rerun()
+
+
 def render_cart_sidebar(catalogo):
     """Sidebar do carrinho com itens, total e ações."""
-    st.sidebar.html('<div class="cart-title">🛒 Carrinho</div>')
+    st.sidebar.html('<h2 class="cart-title">🛒 Carrinho</h2>')
 
     session = st.session_state.session
     if not session:
         st.sidebar.html("""
             <div class="cart-empty">
-                <div class="cart-empty-icon">🛒</div>
+                <div class="cart-empty-icon" aria-hidden="true">🛒</div>
                 <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
             </div>
         """)
+        _render_undo_button()
         return
 
     total = 0.0
@@ -1107,11 +1152,15 @@ def render_cart_sidebar(catalogo):
         col1, col2 = st.sidebar.columns([5, 1], vertical_alignment="center")
         col1.html(f"""
             <div class="cart-item">
-                <div class="cart-item-name">{prod['nome']}</div>
-                <div class="cart-item-detail">{prod['categoria']} • R$ {prod['preco']:.2f}</div>
+                <div class="cart-item-name">{escape(str(prod['nome']))}</div>
+                <div class="cart-item-detail">{escape(str(prod['categoria']))} • {fmt_brl(prod['preco'])}</div>
             </div>
         """)
-        if col2.button("✕", key=f"remove_{item_id}", type="tertiary", help=f"Remover {prod['nome']} do carrinho"):
+        if col2.button("🗑️", key=f"remove_{item_id}", type="tertiary", help=f"Remover {prod['nome']} do carrinho"):
+            st.session_state.undo_snapshot = {
+                "session": list(st.session_state.session),
+                "label": "remoção",
+            }
             st.session_state.session = [i for i in st.session_state.session if i != item_id]
             st.toast(f"🗑️ {prod['nome']} removido do carrinho.")
             st.rerun()
@@ -1119,9 +1168,11 @@ def render_cart_sidebar(catalogo):
     st.sidebar.html(f"""
         <div class="cart-total">
             <div class="cart-total-label">Total estimado</div>
-            <div class="cart-total-value">R$ {total:.2f}</div>
+            <div class="cart-total-value">{fmt_brl(total)}</div>
         </div>
     """)
+
+    _render_undo_button()
 
     if st.sidebar.button(
         "✅ Finalizar compra",
@@ -1134,14 +1185,29 @@ def render_cart_sidebar(catalogo):
 
     st.sidebar.html('<hr class="cart-sidebar-divider">')
 
-    if st.sidebar.button(
+    # Ação destrutiva em duas etapas: o clique pede confirmação explícita.
+    if st.session_state.get("confirm_clear"):
+        st.sidebar.warning("Remover todos os itens do carrinho?")
+        col_yes, col_no = st.sidebar.columns(2)
+        if col_yes.button("Sim, limpar", key="clear_yes", width="stretch"):
+            st.session_state.undo_snapshot = {
+                "session": list(st.session_state.session),
+                "label": "limpeza",
+            }
+            st.session_state.session = []
+            st.session_state.confirm_clear = False
+            st.toast("🗑️ Carrinho esvaziado.")
+            st.rerun()
+        if col_no.button("Cancelar", key="clear_no", width="stretch"):
+            st.session_state.confirm_clear = False
+            st.rerun()
+    elif st.sidebar.button(
         "🗑️ Limpar carrinho",
         width="stretch",
         type="secondary",
-        help="Remove todos os itens do carrinho e recomeça a sessão",
+        help="Remove todos os itens do carrinho (pede confirmação)",
     ):
-        st.session_state.session = []
-        st.toast("🗑️ Carrinho esvaziado.")
+        st.session_state.confirm_clear = True
         st.rerun()
 
 
@@ -1160,10 +1226,10 @@ def _render_order_items(items):
         st.html(f"""
             <div class="checkout-item">
                 <div>
-                    <div class="checkout-item-name">{item['nome']}</div>
-                    <div class="checkout-item-detail">{item['categoria']}</div>
+                    <div class="checkout-item-name">{escape(str(item['nome']))}</div>
+                    <div class="checkout-item-detail">{escape(str(item['categoria']))}</div>
                 </div>
-                <div class="checkout-item-price">R$ {item['preco']:.2f}</div>
+                <div class="checkout-item-price">{fmt_brl(item['preco'])}</div>
             </div>
         """)
 
@@ -1174,8 +1240,8 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
         st.session_state.view = "shop"
         st.rerun()
 
-    st.html('<div class="section-title" style="margin-top:0.75rem;">Finalizar compra</div>')
-    st.html('<div class="section-subtitle">Confira os itens do seu pedido antes de confirmar.</div>')
+    st.html('<h2 class="section-title" style="margin-top:0.75rem;">Finalizar compra</h2>')
+    st.html('<p class="section-subtitle">Confira os itens do seu pedido antes de confirmar.</p>')
 
     session = st.session_state.session
     if not session:
@@ -1198,7 +1264,7 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
     st.html(f"""
         <div class="checkout-total-bar">
             <span class="checkout-total-label">Total do pedido</span>
-            <span class="checkout-total-value">R$ {total:.2f}</span>
+            <span class="checkout-total-value">{fmt_brl(total)}</span>
         </div>
     """)
 
@@ -1216,6 +1282,8 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
     ):
         st.session_state.last_order = {"items": items, "total": total}
         st.session_state.session = []
+        st.session_state.undo_snapshot = None
+        st.session_state.confirm_clear = False
         st.session_state.view = "confirmed"
         st.toast("🎉 Pedido confirmado!")
         st.rerun()
@@ -1225,12 +1293,12 @@ def render_confirmation_view():
     """Tela de agradecimento exibida após a confirmação do pedido."""
     st.html("""
         <div class="confirmation-box">
-            <div class="confirmation-icon">🎉</div>
-            <div class="confirmation-title">Pedido confirmado!</div>
-            <div class="confirmation-text">
+            <div class="confirmation-icon" aria-hidden="true">🎉</div>
+            <h2 class="confirmation-title">Pedido confirmado!</h2>
+            <p class="confirmation-text">
                 Obrigado pela compra. Este é um checkout de demonstração —
                 nenhum pagamento foi processado.
-            </div>
+            </p>
         </div>
     """)
 
@@ -1240,7 +1308,7 @@ def render_confirmation_view():
         st.html(f"""
             <div class="checkout-total-bar">
                 <span class="checkout-total-label">Total pago</span>
-                <span class="checkout-total-value">R$ {order['total']:.2f}</span>
+                <span class="checkout-total-value">{fmt_brl(order['total'])}</span>
             </div>
         """)
 
@@ -1267,9 +1335,9 @@ def main():
             )
             render_skeleton_grid()
 
+    # O skeleton acima já comunica o carregamento — sem st.spinner duplicado.
     try:
-        with st.spinner("Carregando modelo de recomendação..."):
-            model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
+        model, catalogo, item_to_idx, idx_to_item, item_cat, item_price = load_model_and_catalog()
     except FileNotFoundError:
         loading_placeholder.empty()
         st.error(
@@ -1293,13 +1361,13 @@ def main():
     # --- Estado da sessão ---
     if "session" not in st.session_state:
         st.session_state.session = []
-    if "prev_cart_size" not in st.session_state:
-        st.session_state.prev_cart_size = 0
+    if "undo_snapshot" not in st.session_state:
+        st.session_state.undo_snapshot = None
+    if "confirm_clear" not in st.session_state:
+        st.session_state.confirm_clear = False
 
     # --- Estado atual ---
     cart_size = len(st.session_state.session)
-    animate_badge = cart_size > st.session_state.prev_cart_size
-    st.session_state.prev_cart_size = cart_size
 
     # --- Navegação entre telas (loja / checkout / confirmação) ---
     if "view" not in st.session_state:
@@ -1313,7 +1381,7 @@ def main():
     # ======================================================================
     # TOP APP BAR
     # ======================================================================
-    render_app_bar(cart_size, animate_badge)
+    render_app_bar(cart_size)
 
     if st.session_state.view == "confirmed":
         # ==================================================================
@@ -1342,11 +1410,7 @@ def main():
         if "cat_select" not in st.session_state:
             st.session_state.cat_select = "Todas"
 
-        search_term = render_search_section(
-            st.session_state.search_input,
-            st.session_state.cat_select,
-            categories,
-        )
+        search_term = render_search_section(categories)
 
         # ==================================================================
         # CATÁLOGO / PRODUTOS
@@ -1354,22 +1418,27 @@ def main():
         filtered = catalogo.copy()
         if search_term:
             filtered = filtered[
-                filtered["nome"].str.contains(search_term, case=False, na=False)
+                filtered["nome"].str.contains(search_term, case=False, na=False, regex=False)
             ]
         cat_filter = st.session_state.get("cat_select", "Todas")
         if cat_filter and cat_filter != "Todas":
             filtered = filtered[filtered["categoria"] == cat_filter]
 
-        st.html('<div class="section-title">Produtos</div>')
+        st.html('<h2 class="section-title">Produtos</h2>')
+
+        # Valores interpolados em HTML sempre escapados (o termo de busca é
+        # entrada livre do usuário).
+        esc_term = escape(search_term) if search_term else ""
+        esc_cat = escape(cat_filter) if cat_filter else ""
 
         if filtered.empty:
             if search_term or (cat_filter and cat_filter != "Todas"):
                 render_empty_state(
                     "Nenhum resultado encontrado",
-                    f'Não encontramos nada para "{search_term}" na categoria {cat_filter}.'
+                    f'Não encontramos nada para "{esc_term}" na categoria {esc_cat}.'
                     if search_term and cat_filter != "Todas"
-                    else f'Não encontramos nada para "{search_term}".' if search_term
-                    else f'Nenhum produto na categoria {cat_filter}.'
+                    else f'Não encontramos nada para "{esc_term}".' if search_term
+                    else f'Nenhum produto na categoria {esc_cat}.'
                 )
             else:
                 render_empty_state(
@@ -1377,13 +1446,36 @@ def main():
                     "Parece que o catálogo está vazio. Tente novamente mais tarde."
                 )
         else:
-            count_msg = f"{len(filtered)} produto(s) encontrado(s)"
+            # Paginação "carregar mais": renderiza só uma janela do catálogo
+            # (500 cards de uma vez = 500 botões por rerun). O contador de
+            # itens visíveis reseta quando a busca ou a categoria mudam.
+            filter_sig = (search_term, cat_filter)
+            if st.session_state.get("catalog_filter_sig") != filter_sig:
+                st.session_state.catalog_filter_sig = filter_sig
+                st.session_state.catalog_visible = PAGE_SIZE
+
+            page = filtered.head(st.session_state.catalog_visible)
+
+            count_msg = f"Mostrando {len(page)} de {len(filtered)} produto(s)"
             if search_term:
-                count_msg += f' para "{search_term}"'
+                count_msg += f' para "{esc_term}"'
             if cat_filter and cat_filter != "Todas":
-                count_msg += f" em {cat_filter}"
+                count_msg += f" em {esc_cat}"
             st.html(f'<div class="results-count">{count_msg}.</div>')
-            render_product_grid(filtered, "product")
+
+            render_product_grid(page, "product")
+
+            remaining = len(filtered) - len(page)
+            if remaining > 0:
+                _, col_center, _ = st.columns([1, 2, 1])
+                if col_center.button(
+                    f"⬇️ Carregar mais ({remaining} restantes)",
+                    key="load_more",
+                    width="stretch",
+                    help="Mostrar mais produtos do catálogo",
+                ):
+                    st.session_state.catalog_visible += PAGE_SIZE
+                    st.rerun()
 
         # ==================================================================
         # RECOMENDAÇÕES
