@@ -11,32 +11,11 @@ import torch.nn as nn
 # ---------------------------------------------------------------------------
 # Configurações
 # ---------------------------------------------------------------------------
-BASE_DIR = Path(__file__).parent
-CHECKPOINT_PATH = BASE_DIR / "recomendador_checkpoint_v4.pt"
-CATALOG_PATH = BASE_DIR / "catalogo_v4.csv"
+CHECKPOINT_PATH = Path("recomendador_checkpoint_v4.pt")
+CATALOG_PATH = Path("catalogo_v4.csv")
 GRID_COLUMNS = 4  # cards por linha no desktop (e nº de recomendações na loja)
 PAGE_SIZE = 24  # produtos por página no catálogo (6 linhas de 4)
 CAROUSEL_RECS = 12  # recomendações no carrossel do checkout
-
-# Ícones SVG carregados da pasta assets
-ASSETS_DIR = BASE_DIR / "assets"
-
-
-def load_svg(filename):
-    """Carrega um arquivo SVG como string HTML, pronto para injeção inline."""
-    path = ASSETS_DIR / filename
-    if path.exists():
-        return path.read_text()
-    return ""
-
-
-SVG_SEARCH = load_svg("search.svg")
-SVG_CART = load_svg("cart.svg")
-SVG_CHART = load_svg("chart-bar.svg")
-SVG_CLICK = load_svg("click.svg")
-# SVGs mantidos inline por não haver equivalente nos assets baixados
-SVG_STORE = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>"""
-SVG_CHECK = """<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>"""
 
 st.set_page_config(
     page_title="Loja Mockup | Recomendador de Sessões",
@@ -1097,7 +1076,7 @@ def render_empty_state(title, message):
     """Empty state amigável (title/message podem conter HTML já escapado)."""
     st.html(f"""
         <div class="empty-state">
-            <div class="empty-state-icon" aria-hidden="true">{SVG_SEARCH}</div>
+            <div class="empty-state-icon" aria-hidden="true">🔍</div>
             <h3 class="empty-state-title">{title}</h3>
             <p class="empty-state-text">{message}</p>
         </div>
@@ -1110,7 +1089,7 @@ def render_app_bar(cart_size):
     with st.container(key="app_bar", horizontal=True, vertical_alignment="center"):
         st.html(f"""
             <div class="app-bar-brand">
-                <div class="app-bar-brand-icon" aria-hidden="true">{SVG_STORE}</div>
+                <div class="app-bar-brand-icon" aria-hidden="true">🛍️</div>
                 <div>
                     <h1 class="app-bar-brand-text">Loja Mockup</h1>
                     <p class="app-bar-brand-sub">Recomendador Inteligente</p>
@@ -1139,7 +1118,7 @@ def render_hero(has_items=False):
     else:
         st.html(f"""
             <div class="hero">
-                <h2 class="hero-title">Seu próximo produto está a um clique {SVG_CLICK}</h2>
+                <h2 class="hero-title">Seu próximo produto está a um clique 🎯</h2>
                 <p class="hero-subtitle">Navegue pelo nosso catálogo, adicione itens ao carrinho e descubra recomendações inteligentes baseadas nas suas escolhas.</p>
             </div>
         """)
@@ -1157,7 +1136,7 @@ def render_search_section(categories):
     evitando o aviso do Streamlit sobre default + Session State.
     """
     with st.container(key="search_wrapper", horizontal=True, vertical_alignment="center", gap="small"):
-        st.html(f'<span class="search-icon" aria-hidden="true">{SVG_SEARCH}</span>', width="content")
+        st.html('<span class="search-icon" aria-hidden="true">🔍</span>', width="content")
         search_term = st.text_input(
             "Buscar produtos",
             placeholder="Buscar produtos pelo nome...",
@@ -1216,7 +1195,7 @@ def render_recommendations(catalogo, model, item_to_idx, idx_to_item, item_cat, 
     else:
         render_product_grid(recs, "rec", is_recommendation=True)
 
-    with st.expander(f"{SVG_CHART} Dados técnicos das recomendações"):
+    with st.expander("📊 Dados técnicos das recomendações"):
         st.dataframe(
             recs[["rank", "nome", "categoria", "preco", "score"]],
             width="stretch",
@@ -1244,13 +1223,13 @@ def _render_undo_button():
 
 def render_cart_sidebar(catalogo):
     """Sidebar do carrinho com itens, total e ações."""
-    st.sidebar.html(f'<h2 class="cart-title">{SVG_CART} Carrinho</h2>')
+    st.sidebar.html('<h2 class="cart-title">🛒 Carrinho</h2>')
 
     session = st.session_state.session
     if not session:
         st.sidebar.html(f"""
             <div class="cart-empty">
-                <div class="cart-empty-icon" aria-hidden="true">{SVG_CART}</div>
+                <div class="cart-empty-icon" aria-hidden="true">🛒</div>
                 <p class="cart-empty-text">Seu carrinho está vazio.<br>Adicione produtos para ver recomendações!</p>
             </div>
         """)
@@ -1411,7 +1390,7 @@ def render_confirmation_view():
     """Tela de agradecimento exibida após a confirmação do pedido."""
     st.html(f"""
         <div class="confirmation-box">
-            <div class="confirmation-icon" aria-hidden="true">{SVG_CHECK}</div>
+            <div class="confirmation-icon" aria-hidden="true">🎉</div>
             <h2 class="confirmation-title">Pedido confirmado!</h2>
             <p class="confirmation-text">
                 Obrigado pela compra. Este é um checkout de demonstração —
