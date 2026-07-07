@@ -1209,7 +1209,7 @@ def _render_undo_button():
     if not undo:
         return
     if st.sidebar.button(
-        f"↩️ Desfazer {undo['label']}",
+        f"Desfazer {undo['label']}",
         key="undo_cart",
         width="stretch",
         type="secondary",
@@ -1251,7 +1251,7 @@ def render_cart_sidebar(catalogo):
                 <div class="cart-item-detail">{escape(str(prod['categoria']))} • {fmt_brl(prod['preco'])}</div>
             </div>
         """)
-        if col2.button("🗑️", key=f"remove_{item_id}", type="tertiary", help=f"Remover {prod['nome']} do carrinho"):
+        if col2.button("×", key=f"remove_{item_id}", type="tertiary", help=f"Remover {prod['nome']} do carrinho"):
             st.session_state.undo_snapshot = {
                 "session": list(st.session_state.session),
                 "label": "remoção",
