@@ -1270,7 +1270,7 @@ def render_cart_sidebar(catalogo):
     _render_undo_button()
 
     if st.sidebar.button(
-        "✅ Finalizar compra",
+        "Finalizar compra",
         width="stretch",
         type="primary",
         help="Ver o resumo do pedido e confirmar a compra",
@@ -1297,7 +1297,7 @@ def render_cart_sidebar(catalogo):
             st.session_state.confirm_clear = False
             st.rerun()
     elif st.sidebar.button(
-        "🗑️ Limpar carrinho",
+        "Limpar carrinho",
         width="stretch",
         type="secondary",
         help="Remove todos os itens do carrinho (pede confirmação)",
@@ -1372,7 +1372,7 @@ def render_checkout_view(catalogo, model, item_to_idx, idx_to_item, item_cat, it
         )
 
     if st.button(
-        "✅ Confirmar pedido",
+        "Confirmar pedido",
         type="primary",
         width="stretch",
         help="Confirma a compra e finaliza o pedido",
@@ -1566,7 +1566,7 @@ def main():
             if remaining > 0:
                 _, col_center, _ = st.columns([1, 2, 1])
                 if col_center.button(
-                    f"⬇️ Carregar mais ({remaining} restantes)",
+                    f"Carregar mais ({remaining} restantes)",
                     key="load_more",
                     width="stretch",
                     help="Mostrar mais produtos do catálogo",
