@@ -460,8 +460,14 @@ CUSTOM_CSS = f"""
     }}
 
     /* Remove o fundo cinza/lilás nativo do wrapper do Streamlit text_input */
-    .st-key-search_wrapper [data-testid="stTextInput"] > div {{
+    .st-key-search_wrapper [data-testid="stTextInput"] div,
+    .st-key-search_wrapper [data-testid="stTextInput"] input {{
         background: transparent !important;
+    }}
+
+    .st-key-search_wrapper input::placeholder {{
+        color: var(--md-on-surface-variant);
+        opacity: 0.7;
     }}
 
     /* ===== Category Chips ===== */
